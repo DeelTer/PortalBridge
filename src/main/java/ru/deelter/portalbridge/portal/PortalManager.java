@@ -16,6 +16,7 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Vector3f;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.pinger.ServerInfo;
 
@@ -68,7 +69,8 @@ public class PortalManager {
         BlockDisplay lower = lowerLoc.getWorld().spawn(lowerLoc, BlockDisplay.class);
         BlockDisplay upper = upperLoc.getWorld().spawn(upperLoc, BlockDisplay.class);
 
-        BlockFace facing = player.getFacing().getOppositeFace();
+        // Door panel sits on the face nearest the player so they walk INTO it.
+        BlockFace facing = player.getFacing();
         Door.Hinge hinge = pickHinge(player, targetBlock, facing);
 
         Door lowerData = (Door) Bukkit.createBlockData(Material.SPRUCE_DOOR);
@@ -115,6 +117,7 @@ public class PortalManager {
         hologram.setDefaultBackground(false);
         hologram.setBillboard(Display.Billboard.CENTER);
         hologram.setSeeThrough(true);
+        hologram.setShadowed(true);
         hologram.setPersistent(false);
         portal.setHologram(hologram);
 
@@ -125,8 +128,78 @@ public class PortalManager {
             updateHologram(portal, info);
         });
 
-        int taskId = Bukkit.getScheduler().runTaskLater(plugin, () -> removePortal(targetBlock), lifetimeSec * 20L).getTaskId();
+        int taskId = Bukkit.getScheduler().runTaskLater(plugin, () -> removePortalAnimated(targetBlock), lifetimeSec * 20L).getTaskId();
         portal.setTaskId(taskId);
+    }
+
+    /**
+     * Removes the portal with a shrink-to-point animation. Door and hologram scale
+     * down toward their centers over a few ticks, then entities are removed.
+     */
+    public void removePortalAnimated(Location lowerLoc) {
+        Portal p = portalsByLowerLoc.get(lowerLoc);
+        if (p == null) return;
+
+        if (p.getAnimTaskId() != -1) {
+            Bukkit.getScheduler().cancelTask(p.getAnimTaskId());
+            p.setAnimTaskId(-1);
+        }
+        if (p.getCheckTaskId() != -1) {
+            Bukkit.getScheduler().cancelTask(p.getCheckTaskId());
+            p.setCheckTaskId(-1);
+        }
+        if (p.getInteraction() != null) {
+            p.getInteraction().remove();
+            p.setInteraction(null);
+        }
+
+        final BlockDisplay lower = p.getLowerDisplay();
+        final BlockDisplay upper = p.getUpperDisplay();
+        final TextDisplay hologram = p.getHologram();
+
+        final Transformation lowerStart = lower != null ? lower.getTransformation() : null;
+        final Transformation upperStart = upper != null ? upper.getTransformation() : null;
+        final Transformation hgStart    = hologram != null ? hologram.getTransformation() : null;
+
+        final int duration = 6;
+        final int[] tick = {0};
+        int id = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            tick[0]++;
+            float frac = Math.min(1f, (float) tick[0] / duration);
+            float scale = Math.max(0.001f, 1f - frac);
+
+            if (lower != null && lower.isValid() && lowerStart != null)
+                applyShrink(lower, lowerStart, scale, true);
+            if (upper != null && upper.isValid() && upperStart != null)
+                applyShrink(upper, upperStart, scale, true);
+            if (hologram != null && hologram.isValid() && hgStart != null)
+                applyShrink(hologram, hgStart, scale, false);
+
+            if (tick[0] >= duration) {
+                int taskId = p.getAnimTaskId();
+                p.setAnimTaskId(-1);
+                if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
+                removePortal(lowerLoc);
+            }
+        }, 1L, 1L).getTaskId();
+        p.setAnimTaskId(id);
+    }
+
+    private void applyShrink(org.bukkit.entity.Display d, Transformation base, float scale, boolean centerBlock) {
+        Vector3f t = new Vector3f(base.getTranslation());
+        if (centerBlock) {
+            float off = (1f - scale) * 0.5f;
+            t.add(off, off, off);
+        }
+        Transformation nt = new Transformation(
+                t,
+                base.getLeftRotation(),
+                new Vector3f(scale),
+                base.getRightRotation()
+        );
+        d.setInterpolationDelay(0);
+        d.setInterpolationDuration(1);
+        d.setTransformation(nt);
     }
 
     private void updateHologram(Portal portal, ServerInfo info) {

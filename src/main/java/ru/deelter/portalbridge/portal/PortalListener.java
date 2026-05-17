@@ -97,7 +97,8 @@ public class PortalListener implements Listener {
                     Math.abs(loc.getZ() - center.getZ()) <= halfW) {
 
                     player.transfer(portal.getTargetHost(), portal.getTargetPort());
-                    closePortal(portal);
+                    playCloseSound(portal);
+                    plugin.getPortalManager().removePortalAnimated(portal.getLowerDoorLoc());
                     cancelCheckTask(portal);
                     break;
                 }
@@ -116,6 +117,10 @@ public class PortalListener implements Listener {
 
     private void closePortal(Portal portal) {
         applyDoorAnimation(portal, false);
+        playCloseSound(portal);
+    }
+
+    private void playCloseSound(Portal portal) {
         Location loc = portal.getLowerDoorLoc();
         if (loc != null && loc.getWorld() != null) {
             loc.getWorld().playSound(loc, Sound.BLOCK_WOODEN_DOOR_CLOSE, 1.0f, 1.0f);
@@ -145,7 +150,7 @@ public class PortalListener implements Listener {
             portal.setAnimTaskId(-1);
         }
 
-        final int totalTicks = 10;
+        final int totalTicks = 5;
         final float openAngle = leftHinge ? 90f : -90f;
         final float startAngle = toOpen ? 0f : openAngle;
         final float endAngle   = toOpen ? openAngle : 0f;

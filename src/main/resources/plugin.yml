@@ -1,0 +1,11 @@
+name: PortalBridge
+description: $description
+prefix: PortalBridge
+version: '${version}'
+
+main: ru.deelter.portalBridge.PortalBridge
+api-version: '1.21.3'
+load: POSTWORLD
+
+authors: [ DeelTer ]
+website: https://deelter.ru

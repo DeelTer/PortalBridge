@@ -13,7 +13,7 @@ public class AdminCommand implements CommandExecutor {
     private final PortalBridgePlugin plugin;
 
     @Override
-    public boolean onCommand(CommandSender sender, Command cmd, String label, String @NonNull [] args) {
+    public boolean onCommand(@NonNull CommandSender sender, @NonNull Command cmd, @NonNull String label, String @NonNull [] args) {
         if (args.length == 0) return false;
         if (args[0].equalsIgnoreCase("reload")) {
             plugin.getConfigManager().loadConfig();

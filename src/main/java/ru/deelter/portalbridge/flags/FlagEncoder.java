@@ -71,10 +71,11 @@ public class FlagEncoder {
 		PLUGIN_INSTALLED,
 		PROXY,
 		ONLINE_MODE,
-		HAS_AUTH_PLUGIN,
-		WHITELIST_ENABLED,
-		TRANSFERS_ENABLED,
-		LOGS_IP_ENABLED;
+		AUTH,
+		ANTI_CHEAT,
+		WHITELIST,
+		TRANSFERS,
+		LOGS_IP;
 
 		public static @Nullable ServerFlag fromOrdinal(int ordinal) {
 			if (ordinal < 0 || ordinal >= values().length) return null;

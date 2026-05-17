@@ -5,21 +5,24 @@ main: ru.deelter.portalbridge.PortalBridgePlugin
 api-version: "1.21"
 author: Deelter
 website: https://github.com/yourname/PortalBridge
+
 commands:
   portal:
-    description: Create a portal to another server
-    usage: /portal <ip> [port]
+    description: Portal management
+    usage: /portal <open|bind|hub|help|admin> [args]
     permission: portalbridge.use
+    aliases: [p]
   hub:
     description: Return to hub server
     usage: /hub
-  portalbridge:
-    description: Admin commands
-    permission: portalbridge.admin
+    permission: portalbridge.hub
+
 permissions:
   portalbridge.use:
     default: true
   portalbridge.hub:
+    default: true
+  portalbridge.bind:
     default: true
   portalbridge.admin:
     default: op

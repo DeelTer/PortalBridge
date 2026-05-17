@@ -1,7 +1,10 @@
-# PortalBridge configuration
 language:
   default: "en"
   auto-detect: true
+
+hub:
+  host: "cominers.net"
+  port: 25565
 
 trust-lists:
   whitelist:
@@ -12,6 +15,7 @@ trust-lists:
     entries: []
 
 require-portalbridge-flag: true
+require-accept-transfers: false
 
 portal:
   lifetime-seconds: 30
@@ -20,22 +24,48 @@ portal:
   max-portals-per-player: 1
   max-placement-distance: 4
 
+  animation:
+    open-ticks: 5
+    shrink-ticks: 6
+
+  door:
+    material: SPRUCE_DOOR
+    interaction-width: 1.4
+    interaction-height: 2.4
+
+  hologram:
+    height: 3.4
+    see-through: true
+    shadowed: true
+    format: "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version>\n<dark_gray>↑ <player>"
+
+  sounds:
+    open:
+      id: BLOCK_WOODEN_DOOR_OPEN
+      volume: 1.0
+      pitch: 1.0
+    close:
+      id: BLOCK_WOODEN_DOOR_CLOSE
+      volume: 1.0
+      pitch: 1.0
+    place:
+      id: BLOCK_WOODEN_DOOR_OPEN
+      volume: 1.0
+      pitch: 1.3
+
+  particles:
+    enabled: true
+    type: PORTAL
+    count: 40
+    spread: 0.3
+
 untrusted:
   action: "WARN_AND_BLOCK"
-  warning-message: "<red>⚠ Target server does not have PortalBridge installed!</red>\n<click:run_command:/portal force><green>Continue anyway</green></click>"
-
-display:
-  enabled: true
-  update-interval-ticks: 20
-  format: "<gold><motd>\n<green><online>/<max> online\n<gray>Version: <version>"
+  warning-message: "<red>⚠ Target server does not have PortalBridge installed!</red>"
 
 cache:
   ping-ttl-ms: 15000
   max-size: 100
-
-database:
-  type: "H2"
-  url: "jdbc:h2:./plugins/PortalBridge/data"
 
 updates:
   check-enabled: false

@@ -20,6 +20,7 @@ public class Portal {
     private final int targetPort;
     private final long expiryTime;
     private final UUID owner;
+    private final String ownerName;
 
     @Setter private BlockDisplay lowerDisplay;
     @Setter private BlockDisplay upperDisplay;

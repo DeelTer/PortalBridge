@@ -2,8 +2,11 @@ package ru.deelter.portalbridge;
 
 import lombok.Getter;
 import org.bstats.bukkit.Metrics;
+import org.bukkit.Bukkit;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import ru.deelter.portalbridge.commands.AdminCommand;
+import ru.deelter.portalbridge.bind.BindListener;
+import ru.deelter.portalbridge.bind.DoorBindManager;
 import ru.deelter.portalbridge.commands.HubCommand;
 import ru.deelter.portalbridge.commands.PortalCommand;
 import ru.deelter.portalbridge.config.ConfigManager;
@@ -17,40 +20,66 @@ import ru.deelter.portalbridge.utils.TrustListManager;
 @Getter
 public class PortalBridgePlugin extends JavaPlugin {
 
-    @Getter
-    private static PortalBridgePlugin instance;
-    private ConfigManager configManager;
-    private Lang lang;
-    private PortalManager portalManager;
-    private ServerPinger serverPinger;
-    private TrustListManager trustListManager;
+	@Getter
+	private static PortalBridgePlugin instance;
+	private ConfigManager configManager;
+	private Lang lang;
+	private PortalManager portalManager;
+	private ServerPinger serverPinger;
+	private TrustListManager trustListManager;
+	private DoorBindManager doorBindManager;
 
-    @Override
-    public void onEnable() {
-        instance = this;
-        configManager = new ConfigManager(this);
-        configManager.loadConfig();
-        lang = new Lang(this);
-        trustListManager = new TrustListManager(this);
-        serverPinger = new ServerPinger(this);
-        portalManager = new PortalManager(this);
+	@Override
+	public void onEnable() {
+		instance = this;
+		configManager = new ConfigManager(this);
+		configManager.loadConfig();
+		lang = new Lang(this);
+		trustListManager = new TrustListManager(this);
+		serverPinger = new ServerPinger(this);
+		portalManager = new PortalManager(this);
+		doorBindManager = new DoorBindManager(this);
 
-        getCommand("portal").setExecutor(new PortalCommand(this));
-        getCommand("hub").setExecutor(new HubCommand(this));
-        getCommand("portalbridge").setExecutor(new AdminCommand(this));
 
-        getServer().getPluginManager().registerEvents(new PortalListener(this), this);
-        getServer().getPluginManager().registerEvents(new FlagInjector(), this);
+		if (!Bukkit.isAcceptingTransfers()) {
+			if (configManager.isRequireAcceptTransfers()) {
+				getLogger().warning("Please set `accepts-transfers=true` in server.properties file");
+				Bukkit.getPluginManager().disablePlugin(this);
+				return;
+			}
+			getLogger().warning("The disabled accept-transfers in server.properties may cause errors when connecting to this server. Ignore this log if you are on a proxy server.");
+		}
 
-        UpdateChecker.init(this);
-        new Metrics(this, 31401);
+		var pluginPortalCommand = getCommand("portal");
+		if (pluginPortalCommand == null) {
+			getLogger().warning("Enable `/portal` command with plugin.yml");
+			Bukkit.getPluginManager().disablePlugin(this);
+			return;
+		}
+		PortalCommand portalCommand = new PortalCommand(this);
+		pluginPortalCommand.setExecutor(portalCommand);
+		pluginPortalCommand.setTabCompleter(portalCommand);
 
-        getLogger().info("PortalBridge enabled");
-    }
+		var pluginHubCommand = getCommand("hub");
+		if (pluginHubCommand != null) {
+			pluginHubCommand.setExecutor(new HubCommand(this));
+		}
 
-    @Override
-    public void onDisable() {
-        if (portalManager != null) portalManager.removeAllPortals();
-        getLogger().info("PortalBridge disabled");
-    }
+		PluginManager pluginManager = Bukkit.getPluginManager();
+
+		pluginManager.registerEvents(new PortalListener(this), this);
+		pluginManager.registerEvents(new BindListener(this), this);
+		pluginManager.registerEvents(new FlagInjector(), this);
+
+		UpdateChecker.init(this);
+		new Metrics(this, 31401);
+
+		getLogger().info("PortalBridge enabled");
+	}
+
+	@Override
+	public void onDisable() {
+		if (portalManager != null) portalManager.removeAllPortals();
+		getLogger().info("PortalBridge disabled");
+	}
 }

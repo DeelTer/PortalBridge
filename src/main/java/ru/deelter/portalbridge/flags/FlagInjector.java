@@ -14,33 +14,42 @@ import java.util.Set;
 
 public class FlagInjector implements Listener {
 
-	private static final String[] AUTH_PLUGINS = {"Login", "Auth", "AuthMe", "nLogin", "JPremium", "SimpleLogin", "CrackShotAuthentication"};
+	private static final Set<String> PLUGIN_KEYWORDS_AUTH = Set.of("login", "auth", "authme", "nlogin", "jpremium", "simplelogin", "crackshotauth");
+	private static final Set<String> PLUGIN_KEYWORDS_ANTI_CHEAT = Set.of(
+			"vulcan", "matrix", "grim", "nocheatplus", "spartan", "hawk",
+			"anticheatreloaded", "aac", "foxaddition",
+			"etherealac", "verus", "themis", "grimac"
+	);
 	private final Set<FlagEncoder.ServerFlag> cachedFlags = new HashSet<>();
 
 	public FlagInjector() {
 		boolean onlineMode = Bukkit.getOnlineMode();
-		boolean hasAuth = hasAuthPlugin();
 		boolean whitelistEnabled = Bukkit.hasWhitelist();
 
 		boolean loggingIPs = Bukkit.getServer().isLoggingIPs();
 		boolean acceptingTransfers = Bukkit.getServer().isAcceptingTransfers();
 
-		if (hasAuth) cachedFlags.add(FlagEncoder.ServerFlag.HAS_AUTH_PLUGIN);
 		if (onlineMode) cachedFlags.add(FlagEncoder.ServerFlag.ONLINE_MODE);
-		if (whitelistEnabled) cachedFlags.add(FlagEncoder.ServerFlag.WHITELIST_ENABLED);
-		if (loggingIPs) cachedFlags.add(FlagEncoder.ServerFlag.LOGS_IP_ENABLED);
-		if (acceptingTransfers) cachedFlags.add(FlagEncoder.ServerFlag.TRANSFERS_ENABLED);
+		if (whitelistEnabled) cachedFlags.add(FlagEncoder.ServerFlag.WHITELIST);
+		if (loggingIPs) cachedFlags.add(FlagEncoder.ServerFlag.LOGS_IP);
+		if (acceptingTransfers) cachedFlags.add(FlagEncoder.ServerFlag.TRANSFERS);
 
-		cachedFlags.add(FlagEncoder.ServerFlag.PLUGIN_INSTALLED);
-	}
 
-	private boolean hasAuthPlugin() {
-		for (String pluginName : AUTH_PLUGINS) {
-			for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-				if (plugin.getName().equalsIgnoreCase(pluginName)) return true;
-			}
+		Set<String> pluginNames = new HashSet<>();
+		for (Plugin p : Bukkit.getPluginManager().getPlugins()) {
+			String name = p.getName().toLowerCase();
+			pluginNames.add(name);
 		}
-		return false;
+
+		boolean hasAuth = pluginNames.stream().anyMatch(name -> PLUGIN_KEYWORDS_AUTH.stream().anyMatch(name::contains));
+		boolean hasAntiCheat = pluginNames.stream().anyMatch(name -> PLUGIN_KEYWORDS_ANTI_CHEAT.stream().anyMatch(name::contains));
+		if (hasAuth) {
+			cachedFlags.add(FlagEncoder.ServerFlag.AUTH);
+		}
+		if (hasAntiCheat) {
+			cachedFlags.add(FlagEncoder.ServerFlag.ANTI_CHEAT);
+		}
+		cachedFlags.add(FlagEncoder.ServerFlag.PLUGIN_INSTALLED);
 	}
 
 	@EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)

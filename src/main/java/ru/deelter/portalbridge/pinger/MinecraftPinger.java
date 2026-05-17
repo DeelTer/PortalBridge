@@ -19,12 +19,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class MinecraftPinger {
 
+	private static final int TIMEOUT_MILLIS = 2000;
+
 	@Contract("_, _ -> new")
 	public static @NonNull CompletableFuture<ServerInfo> ping(String host, int port) {
 		return CompletableFuture.supplyAsync(() -> {
 			try (Socket socket = new Socket()) {
-				socket.connect(new InetSocketAddress(host, port), 3000);
-				socket.setSoTimeout(3000);
+				socket.connect(new InetSocketAddress(host, port), TIMEOUT_MILLIS);
+				socket.setSoTimeout(TIMEOUT_MILLIS);
 
 				DataOutputStream out = new DataOutputStream(socket.getOutputStream());
 				DataInputStream in = new DataInputStream(socket.getInputStream());

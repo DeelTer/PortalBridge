@@ -1,11 +1,25 @@
 name: PortalBridge
-description: $description
-prefix: PortalBridge
-version: '${version}'
-
-main: ru.deelter.portalBridge.PortalBridge
-api-version: '1.21.3'
-load: POSTWORLD
-
-authors: [ DeelTer ]
-website: https://deelter.ru
+version: ${version}
+description: ${description}
+main: ru.deelter.portalbridge.PortalBridgePlugin
+api-version: "1.21"
+author: Deelter
+website: https://github.com/yourname/PortalBridge
+commands:
+  portal:
+    description: Create a portal to another server
+    usage: /portal <ip> [port]
+    permission: portalbridge.use
+  hub:
+    description: Return to hub server
+    usage: /hub
+  portalbridge:
+    description: Admin commands
+    permission: portalbridge.admin
+permissions:
+  portalbridge.use:
+    default: true
+  portalbridge.hub:
+    default: true
+  portalbridge.admin:
+    default: op

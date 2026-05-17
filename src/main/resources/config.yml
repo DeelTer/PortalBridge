@@ -1,0 +1,49 @@
+# PortalBridge configuration
+language:
+  default: "en"
+  auto-detect: true
+
+trust-lists:
+  whitelist:
+    enabled: true
+    entries: []
+  blacklist:
+    enabled: true
+    entries: []
+
+require-portalbridge-flag: true
+
+portal:
+  lifetime-seconds: 30
+  collision-radius: 5.0
+  player-proximity-block-radius: 2.0
+  max-portals-per-player: 1
+  max-placement-distance: 4
+
+untrusted:
+  action: "WARN_AND_BLOCK"
+  warning-message: "<red>⚠ Target server does not have PortalBridge installed!</red>\n<click:run_command:/portal force><green>Continue anyway</green></click>"
+
+display:
+  enabled: true
+  update-interval-ticks: 20
+  format: "<gold><motd>\n<green><online>/<max> online\n<gray>Version: <version>"
+
+cache:
+  ping-ttl-ms: 15000
+  max-size: 100
+
+database:
+  type: "H2"
+  url: "jdbc:h2:./plugins/PortalBridge/data"
+
+updates:
+  check-enabled: false
+  repo: "yourname/PortalBridge"
+  notify-admins: true
+
+metrics:
+  enabled: true
+  plugin-id: 31401
+
+debug: false

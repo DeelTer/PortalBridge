@@ -1,0 +1,11 @@
+messages:
+  portal-created: "<green>Portal created! Step through to go to <gold><target></gold>."
+  portal-expired: "<red>Your portal has expired."
+  cannot-place-near-player: "<red>Cannot place portal near another player."
+  cannot-place-near-portal: "<red>Too close to another portal."
+  hub-returning: "<green>Returning to hub..."
+  untrusted-warning: "<red>⚠ This server is untrusted! <click:run_command:'<command>'><green>[Proceed]</green></click>"
+  portal-create-untrusted: "<red>Cannot create portal: target server is not trusted."
+  server-blacklisted: "<red>Cannot create portal: target server is blacklisted."
+  server-not-accepting-transfers: "<red>This server does not accept transfers. Contact an administrator."
+  server-not-exist: "<red>This server not exists"

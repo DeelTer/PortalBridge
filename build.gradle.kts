@@ -1,15 +1,33 @@
 plugins {
     id("java-library")
     id("xyz.jpenilla.run-paper") version "3.0.2"
+    id("com.gradleup.shadow") version "9.4.1"
 }
+
+group = "ru.deelter.portalbridge"
+version = "1.0.0"
+description = "PortalBridge - cross-server portals with trust verification"
 
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://oss.sonatype.org/content/groups/public/")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
+    annotationProcessor("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
+
+    compileOnly("org.slf4j:slf4j-simple:2.0.16")
+    compileOnly("net.kyori:adventure-api:4.17.0")
+    compileOnly("net.kyori:adventure-text-minimessage:4.17.0")
+    compileOnly("net.kyori:adventure-platform-bukkit:4.3.4")
+    implementation("org.bstats:bstats-bukkit:3.0.2")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+    implementation("com.zaxxer:HikariCP:5.1.0")
 }
 
 java {
@@ -17,18 +35,21 @@ java {
 }
 
 tasks {
+    jar { enabled = false }
     runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
         minecraftVersion("1.21.3")
         jvmArgs("-Xms2G", "-Xmx2G", "-Dcom.mojang.eula.agree=true")
     }
-
+    shadowJar {
+        archiveFileName.set("PortalBridge-${project.version}.jar")
+        relocate("org.bstats", "${project.group}.shaded.bstats")
+        relocate("com.github.benmanes.caffeine", "${project.group}.shaded.caffeine")
+        relocate("com.zaxxer.hikari", "${project.group}.shaded.hikari")
+    }
+    assemble { dependsOn(shadowJar) }
     processResources {
-        val props = mapOf("version" to version, "description" to project.description)
-        filesMatching("plugin.yml") {
-            expand(props)
-        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        val props = mapOf("version" to version, "description" to description)
+        filesMatching("plugin.yml") { expand(props) }
     }
 }

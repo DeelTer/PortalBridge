@@ -7,10 +7,10 @@ import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import ru.deelter.portalbridge.bind.BindListener;
 import ru.deelter.portalbridge.bind.DoorBindManager;
-import ru.deelter.portalbridge.commands.HubCommand;
 import ru.deelter.portalbridge.commands.PortalCommand;
 import ru.deelter.portalbridge.config.ConfigManager;
-import ru.deelter.portalbridge.flags.FlagInjector;
+import ru.deelter.portalbridge.flags.IServerStatusPacketModifierManager;
+import ru.deelter.portalbridge.flags.PortalBridgeFlagModifier;
 import ru.deelter.portalbridge.lang.Lang;
 import ru.deelter.portalbridge.pinger.ServerPinger;
 import ru.deelter.portalbridge.portal.PortalListener;
@@ -32,6 +32,7 @@ public class PortalBridgePlugin extends JavaPlugin {
 	private ServerPinger serverPinger;
 	private TrustListManager trustListManager;
 	private DoorBindManager doorBindManager;
+	private IServerStatusPacketModifierManager flagManager;
 
 	@Override
 	public void onEnable() {
@@ -44,7 +45,6 @@ public class PortalBridgePlugin extends JavaPlugin {
 		portalManager = new PortalManager(this);
 		doorBindManager = new DoorBindManager(this);
 		consentCache = new ConsentCache();
-
 
 		if (!Bukkit.isAcceptingTransfers()) {
 			if (configManager.isRequireAcceptTransfers()) {
@@ -65,16 +65,11 @@ public class PortalBridgePlugin extends JavaPlugin {
 		pluginPortalCommand.setExecutor(portalCommand);
 		pluginPortalCommand.setTabCompleter(portalCommand);
 
-		var pluginHubCommand = getCommand("hub");
-		if (pluginHubCommand != null) {
-			pluginHubCommand.setExecutor(new HubCommand(this));
-		}
-
 		PluginManager pluginManager = Bukkit.getPluginManager();
-
 		pluginManager.registerEvents(new PortalListener(this), this);
 		pluginManager.registerEvents(new BindListener(this), this);
-		pluginManager.registerEvents(new FlagInjector(), this);
+
+		enableFlagInjection();
 
 		UpdateChecker.init(this);
 		new Metrics(this, 31401);
@@ -82,9 +77,28 @@ public class PortalBridgePlugin extends JavaPlugin {
 		getLogger().info("PortalBridge enabled");
 	}
 
+	private void enableFlagInjection() {
+		try {
+			flagManager = IServerStatusPacketModifierManager.create();
+			flagManager.enable();
+			flagManager.registerModifier(this, new PortalBridgeFlagModifier());
+		} catch (Throwable t) {
+			getLogger().warning("Failed to enable flag injection: " + t.getMessage());
+			flagManager = null;
+		}
+	}
+
 	@Override
 	public void onDisable() {
 		if (portalManager != null) portalManager.removeAllPortals();
+		if (flagManager != null && flagManager.isEnabled()) {
+			try {
+				flagManager.unregisterModifiersByPlugin(this);
+				flagManager.disable();
+			} catch (Throwable t) {
+				getLogger().warning("Failed to disable flag injection: " + t.getMessage());
+			}
+		}
 		getLogger().info("PortalBridge disabled");
 	}
 }

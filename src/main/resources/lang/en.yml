@@ -24,7 +24,7 @@ messages:
   help-header: "<gold>━━━ PortalBridge ━━━"
   help-open: "<gold>/portal open <host>[:port] <gray>— open a cross-server portal"
   help-bind: "<gold>/portal bind <host>[:port] <gray>— bind a held door to a server"
-  help-hub: "<gold>/portal hub <gray>— return to hub"
+  help-hub: "<gold>/portal hub|lobby <gray>— return to hub"
   help-admin: "<gold>/portal admin <reload|removeall> <gray>— admin commands"
   player-entered-portal: "<yellow><player> entered portal to <gold><target></gold>!"
   server-unreachable: "<red>Server host is unreachable. Check your network."

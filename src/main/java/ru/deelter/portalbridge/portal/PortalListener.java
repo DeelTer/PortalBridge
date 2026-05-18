@@ -16,7 +16,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.util.Transformation;
 import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
-import ru.deelter.portalbridge.flags.FlagEncoder;
+import ru.deelter.portalbridge.flags.ServerFlag;
 import ru.deelter.portalbridge.pinger.ServerInfo;
 import ru.deelter.portalbridge.utils.ConsentCache;
 
@@ -67,7 +67,7 @@ public class PortalListener implements Listener {
     }
 
     private boolean isServerAccepting(@NonNull ServerInfo info) {
-        return info.hasFlag(FlagEncoder.ServerFlag.PROXY) || info.hasFlag(FlagEncoder.ServerFlag.TRANSFERS);
+        return info.hasFlag(ServerFlag.PROXY) || info.hasFlag(ServerFlag.TRANSFERS);
     }
 
     private void openPortal(Player player, Portal portal) {
@@ -112,7 +112,7 @@ public class PortalListener implements Listener {
     private boolean canTransfer(Player player, Portal portal) {
         ServerInfo info = portal.getCachedInfo();
         if (info == null) return true;
-        if (!info.hasFlag(FlagEncoder.ServerFlag.AUTH)) return true;
+        if (!info.hasFlag(ServerFlag.AUTH)) return true;
         if (plugin.getTrustListManager().isWhitelisted(portal.getTargetHost(), portal.getTargetPort())) return true;
 
         ConsentCache consent = plugin.getConsentCache();

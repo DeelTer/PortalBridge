@@ -24,7 +24,7 @@ messages:
   help-header: "<gold>━━━ PortalBridge ━━━"
   help-open: "<gold>/portal open <хост>[:порт] <gray>— открыть портал"
   help-bind: "<gold>/portal bind <хост>[:порт] <gray>— привязать дверь к серверу"
-  help-hub: "<gold>/portal hub <gray>— вернуться в хаб"
+  help-hub: "<gold>/portal hub|lobby <gray>— вернуться в хаб"
   help-admin: "<gold>/portal admin <reload|removeall> <gray>— команды администратора"
   player-entered-portal: "<yellow><player> вошёл в портал на <gold><target></gold>!"
   server-unreachable: "<red>Сервер недоступен. Проверьте сетевое соединение."

@@ -38,7 +38,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "open"  -> handleOpen(player, args);
             case "bind"  -> handleBind(player, args);
-            case "hub"   -> handleHub(player);
+            case "hub", "lobby" -> handleHub(player);
             case "admin" -> handleAdmin(player, args);
             case "help"  -> sendHelp(player);
             case "force" -> handleForce(player, args);
@@ -174,7 +174,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         if (!(sender instanceof Player player)) return List.of();
 
         if (args.length == 1) {
-            List<String> subs = new ArrayList<>(List.of("open", "hub", "help", "bind"));
+            List<String> subs = new ArrayList<>(List.of("open", "hub", "lobby", "help", "bind"));
             if (player.hasPermission("portalbridge.admin")) subs.add("admin");
             return subs.stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
         }

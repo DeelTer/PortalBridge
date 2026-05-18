@@ -65,7 +65,8 @@ untrusted:
   warning-message: "<red>⚠ Target server does not have PortalBridge installed!</red>"
 
 cache:
-  ping-ttl-ms: 15000
+  # Ping cache TTL in seconds. Default = portal lifetime so info stays fresh for one portal cycle.
+  ping-ttl-seconds: 30
   max-size: 100
 
 updates:

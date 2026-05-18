@@ -1,4 +1,3 @@
-// DoorBindManager.java – с сохранением материала и установкой имени/зачарования
 package ru.deelter.portalbridge.bind;
 
 import net.kyori.adventure.text.Component;

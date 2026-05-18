@@ -12,7 +12,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +19,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class MinecraftPinger {
 
-	private static final int TIMEOUT_MILLIS = 3000;
+	private static final int TIMEOUT_MILLIS = 2000;
 
 	@Contract("_, _ -> new")
 	public static @NonNull CompletableFuture<ServerInfo> ping(String host, int port) {

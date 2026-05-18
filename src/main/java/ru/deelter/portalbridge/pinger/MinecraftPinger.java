@@ -58,13 +58,7 @@ public class MinecraftPinger {
 				}
 			} catch (Exception e) {
 				PortalBridgePlugin.getInstance().getLogger().warning("Failed to ping " + host + ":" + port + " - " + e.getMessage());
-				try {
-					InetAddress address = InetAddress.getByName(host);
-					if (!address.isReachable(TIMEOUT_MILLIS)) {
-						return ServerInfo.UNREACHABLE;
-					}
-				} catch (IOException ignored) {
-				}
+				return ServerInfo.UNREACHABLE;
 			}
 			return ServerInfo.EMPTY;
 		});

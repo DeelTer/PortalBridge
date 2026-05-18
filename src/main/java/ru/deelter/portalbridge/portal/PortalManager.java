@@ -304,8 +304,8 @@ public class PortalManager {
 	 */
 	private static double blockVerticalOffset(Block block) {
 		if (block.isPassable()) return -1.0;
-		double height = block.getBoundingBox().getHeight();
-		return height < 1.0 ? height - 1.0 : 0.0;
+		double topSurface = block.getBoundingBox().getMaxY() - block.getY();
+		return topSurface < 1.0 ? topSurface - 1.0 : 0.0;
 	}
 
 	private Door.Hinge pickHinge(Player player, Location targetBlock, BlockFace facing) {

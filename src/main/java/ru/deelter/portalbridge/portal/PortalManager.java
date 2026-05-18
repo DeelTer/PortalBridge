@@ -106,9 +106,10 @@ public class PortalManager {
 		Portal portal = new Portal(targetLoc, targetHost, targetPort, expiry, player.getUniqueId(), player.getName());
 		portalsByLowerLocation.put(targetLoc, portal);
 
-		spawnPortalEntities(portal, player, targetLoc, lifetimeSec, doorMaterial);
+		double yOffset = blockVerticalOffset(targetBlock);
+		spawnPortalEntities(portal, player, targetLoc, lifetimeSec, doorMaterial, yOffset);
 
-		Location effectLoc = targetLoc.clone().add(0.5, 1.5, 0.5);
+		Location effectLoc = targetLoc.clone().add(0.5, 1.5 + yOffset, 0.5);
 		cfg.getPlaceSound().play(effectLoc);
 		cfg.getPlaceParticles().spawn(effectLoc);
 
@@ -149,7 +150,7 @@ public class PortalManager {
 		portal.setUpdaterTaskId(taskId);
 	}
 
-	private void spawnPortalEntities(Portal portal, Player player, Location targetLoc, int lifetimeSec, Material doorMaterial) {
+	private void spawnPortalEntities(Portal portal, Player player, Location targetLoc, int lifetimeSec, Material doorMaterial, double yOffset) {
 		ConfigManager cfg = plugin.getConfigManager();
 		Material material = doorMaterial != null ? doorMaterial : cfg.getDoorMaterial();
 
@@ -158,12 +159,12 @@ public class PortalManager {
 		boolean leftHinge = hinge == Door.Hinge.LEFT;
 		Transformation closedTrans = DoorAnimator.buildTransform(facing, leftHinge, false);
 
-		BlockDisplay lower = spawnDoorDisplay(targetLoc.clone().add(0, 1, 0), material, facing, hinge, Bisected.Half.BOTTOM, closedTrans, portal);
-		BlockDisplay upper = spawnDoorDisplay(targetLoc.clone().add(0, 2, 0), material, facing, hinge, Bisected.Half.TOP, closedTrans, portal);
+		BlockDisplay lower = spawnDoorDisplay(targetLoc.clone().add(0, 1 + yOffset, 0), material, facing, hinge, Bisected.Half.BOTTOM, closedTrans, portal);
+		BlockDisplay upper = spawnDoorDisplay(targetLoc.clone().add(0, 2 + yOffset, 0), material, facing, hinge, Bisected.Half.TOP, closedTrans, portal);
 		portal.setLowerDisplay(lower);
 		portal.setUpperDisplay(upper);
 
-		Location interactionLoc = targetLoc.clone().add(0.5, 1.0, 0.5);
+		Location interactionLoc = targetLoc.clone().add(0.5, 1.0 + yOffset, 0.5);
 		Interaction interaction = interactionLoc.getWorld().spawn(interactionLoc, Interaction.class);
 		interaction.setPersistent(false);
 		interaction.setInteractionWidth(cfg.getInteractionWidth());
@@ -172,7 +173,7 @@ public class PortalManager {
 		portalsByEntityId.put(interaction.getUniqueId(), portal);
 		portal.setInteraction(interaction);
 
-		TextDisplay hologram = targetLoc.getWorld().spawn(targetLoc.clone().add(0.5, cfg.getHologramHeight(), 0.5), TextDisplay.class);
+		TextDisplay hologram = targetLoc.getWorld().spawn(targetLoc.clone().add(0.5, cfg.getHologramHeight() + yOffset, 0.5), TextDisplay.class);
 		hologram.setPersistent(false);
 		hologram.setDefaultBackground(false);
 		hologram.setBillboard(Display.Billboard.CENTER);
@@ -293,6 +294,18 @@ public class PortalManager {
 
 	private void cancelTask(int taskId) {
 		if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
+	}
+
+	/**
+	 * Returns a Y offset for door/hologram placement based on the target block's height.
+	 * Passable blocks (grass, carpet, flowers): offset -1.0 — door stands on the block below.
+	 * Partial blocks (e.g., bottom slab, height 0.5): offset = height - 1.0 = -0.5.
+	 * Full blocks: offset 0.0 — no adjustment.
+	 */
+	private static double blockVerticalOffset(Block block) {
+		if (block.isPassable()) return -1.0;
+		double height = block.getBoundingBox().getHeight();
+		return height < 1.0 ? height - 1.0 : 0.0;
 	}
 
 	private Door.Hinge pickHinge(Player player, Location targetBlock, BlockFace facing) {

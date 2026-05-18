@@ -8,10 +8,10 @@ hub:
 
 trust-lists:
   whitelist:
-    enabled: true
+    enabled: false
     entries: []
   blacklist:
-    enabled: true
+    enabled: false
     entries: []
 
 require-portalbridge-flag: true
@@ -70,7 +70,7 @@ portal:
     spread: 0.3
 
 cache:
-  ping-ttl-seconds: 60
+  ping-ttl-seconds: 120
   max-size: 100
 
 # Ping timeout in milliseconds (for MinecraftPinger)
@@ -90,8 +90,8 @@ consent:
   cooldown-seconds: 15
 
 updates:
-  check-enabled: false
-  repo: "yourname/PortalBridge"
+  check-enabled: true
+  repo: "DeelTer/PortalBridge"
   notify-admins: true
 
 metrics:

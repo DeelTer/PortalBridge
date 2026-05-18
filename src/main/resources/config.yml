@@ -49,7 +49,7 @@ portal:
 
     # MiniMessage format - placeholders: <motd>, <online>, <max>, <version>, <host>, <port>, <player>, <time>, <online_icon>
     format: "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version> <online_icon>\n<dark_gray>↑ <player> · <time>"
-    format-unreached: "<red><bold><host></bold>\n<dark_gray>↑ <player>"
+    format-unreached: "<red><bold><host></bold>\n<dark_gray>↑ <player> · <time>"
 
   sounds:
     open:

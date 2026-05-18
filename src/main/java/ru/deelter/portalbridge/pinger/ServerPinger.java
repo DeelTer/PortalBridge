@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.flags.ServerFlag;
+import ru.deelter.portalbridge.utils.SrvResolver;
 
 import java.util.EnumSet;
 import java.util.Set;
@@ -16,8 +17,7 @@ public class ServerPinger {
 	private final Cache<String, ServerInfo> cache;
 
 	public ServerPinger(@NonNull PortalBridgePlugin plugin) {
-		long ttlSeconds = plugin.getConfig().getLong("cache.ping-ttl-seconds",
-				plugin.getConfig().getLong("portal.lifetime-seconds", 30));
+		long ttlSeconds = plugin.getConfig().getLong("cache.ping-ttl-seconds", plugin.getConfig().getLong("portal.lifetime-seconds", 30));
 		long maxSize = plugin.getConfig().getLong("cache.max-size", 100);
 		this.cache = Caffeine.newBuilder()
 				.expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
@@ -26,6 +26,14 @@ public class ServerPinger {
 	}
 
 	public @NonNull CompletableFuture<ServerInfo> ping(@NonNull String host, int port) {
+		// Если порт стандартный (25565), пробуем SRV-запись
+		if (port == 25565) {
+			SrvResolver.SrvRecord srv = SrvResolver.resolve(host);
+			if (srv != null) {
+				host = srv.target();
+				port = srv.port();
+			}
+		}
 		String key = host + ":" + port;
 		ServerInfo cached = cache.getIfPresent(key);
 		if (cached != null) return CompletableFuture.completedFuture(cached);
@@ -35,6 +43,9 @@ public class ServerPinger {
 
 		return infoFut.thenCombine(flagsFut, (info, flags) -> {
 			ServerInfo merged = mergeFlags(info, flags);
+			if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
+				PortalBridgePlugin.getInstance().getLogger().info("Merged info for " + key + ": motd=" + info.getMotd() + ", flags=" + flags);
+			}
 			cache.put(key, merged);
 			return merged;
 		});

@@ -82,8 +82,14 @@ public class PortalBridgePlugin extends JavaPlugin {
 			flagManager = IServerStatusPacketModifierManager.create();
 			flagManager.enable();
 			flagManager.registerModifier(this, new PortalBridgeFlagModifier());
+			getLogger().info("Flag injection successfully enabled - server status packet will contain portalbridge_flags field");
 		} catch (Throwable t) {
 			getLogger().warning("Failed to enable flag injection: " + t.getMessage());
+			getLogger().warning("This means other PortalBridge servers cannot detect your flags via SLP.");
+			getLogger().warning("Fallback: flags will NOT be added to server status packet.");
+			if (getConfig().getBoolean("debug", false)) {
+				t.printStackTrace();
+			}
 			flagManager = null;
 		}
 	}

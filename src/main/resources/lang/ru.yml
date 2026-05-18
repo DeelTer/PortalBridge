@@ -28,4 +28,8 @@ messages:
   help-admin: "<gold>/portal admin <reload|removeall> <gray>— команды администратора"
   player-entered-portal: "<yellow><player> вошёл в портал на <gold><target></gold>!"
   server-unreachable: "<red>Сервер недоступен. Проверьте сетевое соединение."
+  server-no-portalbridge: "<red>На этом сервере нет плагина PortalBridge. Переход может быть небезопасен."
+  portal-creation-failed: "<red>Не удалось создать портал. Попробуйте снова."
+  please-wait: "<yellow>Подождите немного перед созданием портала на тот же сервер."
+
 

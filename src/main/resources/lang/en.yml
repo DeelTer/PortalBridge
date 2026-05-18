@@ -28,3 +28,6 @@ messages:
   help-admin: "<gold>/portal admin <reload|removeall> <gray>— admin commands"
   player-entered-portal: "<yellow><player> entered portal to <gold><target></gold>!"
   server-unreachable: "<red>Server host is unreachable. Check your network."
+  server-no-portalbridge: "<red>This server does not have PortalBridge plugin. Transfers may be unsafe."
+  portal-creation-failed: "<red>Failed to create portal. Please try again."
+  please-wait: "<yellow>Please wait a moment before creating another portal to the same server."

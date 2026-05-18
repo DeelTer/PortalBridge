@@ -13,6 +13,8 @@ import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.bind.DoorBindManager.BindData;
 import ru.deelter.portalbridge.pinger.ServerInfo;
+import ru.deelter.portalbridge.portal.Portal;
+import ru.deelter.portalbridge.portal.PortalDisplayUpdater;
 
 @RequiredArgsConstructor
 public class BindListener implements Listener {
@@ -35,31 +37,31 @@ public class BindListener implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
 
-        plugin.getServerPinger().ping(data.host(), data.port()).thenAccept(info ->
-            Bukkit.getScheduler().runTask(plugin, () -> tryOpen(player, data, info)));
-    }
-
-    private void tryOpen(Player player, @NonNull BindData data, ServerInfo info) {
-        if (plugin.getTrustListManager().isBlacklisted(data.host(), data.port())) {
-            player.sendMessage(plugin.getLang().getMessage("server-blacklisted", player));
-            return;
-        }
-
-        boolean unreachable = info == null || info == ServerInfo.UNREACHABLE || info == ServerInfo.EMPTY;
-        if (!unreachable && !plugin.getTrustListManager().isAllowed(info, data.host(), data.port())) {
-            player.sendMessage(plugin.getLang().getMessage("portal-create-untrusted", player));
-            return;
-        }
-
+        // 1. Создаём портал мгновенно
         int lifetime = plugin.getConfigManager().getPortalLifetimeSeconds();
-        String error = plugin.getPortalManager().createPortal(player, data.host(), data.port(), lifetime, data.material(), info);
-        if (error != null) {
-            player.sendMessage(plugin.getLang().getMessage(error, player));
+        Portal portal = plugin.getPortalManager().createPortal(player, data.host(), data.port(), lifetime, data.material(), null);
+        if (portal == null) {
+            player.sendMessage(plugin.getLang().getMessage("portal-creation-failed", player));
             return;
         }
 
         String address = data.port() == 25565 ? data.host() : data.host() + ":" + data.port();
-        String msgKey = unreachable ? "portal-created-unreachable" : "portal-created";
-        player.sendMessage(plugin.getLang().getMessage(msgKey, player, "target", address));
+        player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
+
+        // 2. Асинхронно получаем данные и обновляем голограмму
+        plugin.getServerPinger().ping(data.host(), data.port()).thenAccept(info -> {
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                portal.setCachedInfo(info);
+                PortalDisplayUpdater.update(portal, info,
+                        plugin.getConfigManager().getHologramFormat(),
+                        plugin.getConfigManager().getHologramFormatUnreached(),
+                        player.getName());
+                // Если данные неполные или сервер недоступен, показываем дополнительное сообщение
+                if (info == ServerInfo.EMPTY || info == ServerInfo.UNREACHABLE ||
+                        (info.getMotd() != null && info.getFlags().isEmpty())) {
+                    player.sendMessage(plugin.getLang().getMessage("portal-created-unreachable", player, "target", address));
+                }
+            });
+        });
     }
 }

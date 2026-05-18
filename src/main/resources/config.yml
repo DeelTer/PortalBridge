@@ -66,7 +66,7 @@ untrusted:
 
 cache:
   # Ping cache TTL in seconds. Default = portal lifetime so info stays fresh for one portal cycle.
-  ping-ttl-seconds: 30
+  ping-ttl-seconds: 60
   max-size: 100
 
 updates:
@@ -78,4 +78,4 @@ metrics:
   enabled: true
   plugin-id: 31401
 
-debug: false
+debug: true

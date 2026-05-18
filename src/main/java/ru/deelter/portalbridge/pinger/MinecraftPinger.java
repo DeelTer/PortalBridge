@@ -2,7 +2,9 @@ package ru.deelter.portalbridge.pinger;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import lombok.NoArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.flags.FlagCodec;
 import ru.deelter.portalbridge.flags.ServerFlag;
 
@@ -17,11 +19,10 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
+@NoArgsConstructor
 public final class MinecraftPinger {
 
-	private static final int TIMEOUT_MILLIS = 3000;
-
-	private MinecraftPinger() {}
+	private static final int TIMEOUT_MILLIS = 5000;
 
 	public static @NonNull CompletableFuture<Set<ServerFlag>> fetchFlags(@NonNull String host, int port) {
 		return CompletableFuture.supplyAsync(() -> {
@@ -55,7 +56,11 @@ public final class MinecraftPinger {
 				int jsonLength = readVarInt(in);
 				byte[] data = new byte[jsonLength];
 				in.readFully(data);
-				return parseFlags(new String(data, StandardCharsets.UTF_8));
+
+				// DEBUG TO REMOVE
+				String json = new String(data, StandardCharsets.UTF_8);
+				PortalBridgePlugin.getInstance().getLogger().info("SLP response for " + host + ":" + port + ": " + json);
+				return parseFlags(json);
 			} catch (Exception e) {
 				return EnumSet.noneOf(ServerFlag.class);
 			}
@@ -66,7 +71,10 @@ public final class MinecraftPinger {
 		try {
 			JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 			if (!root.has(FlagCodec.JSON_FIELD)) return EnumSet.noneOf(ServerFlag.class);
-			return FlagCodec.decode(root.get(FlagCodec.JSON_FIELD).getAsString());
+			// DEBUG TO REMOVE
+			Set<ServerFlag> flags = FlagCodec.decode(root.get(FlagCodec.JSON_FIELD).getAsString());
+			PortalBridgePlugin.getInstance().getLogger().info("Decoded flags: " + flags);
+			return flags;
 		} catch (Exception e) {
 			return EnumSet.noneOf(ServerFlag.class);
 		}

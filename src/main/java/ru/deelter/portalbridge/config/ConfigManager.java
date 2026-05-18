@@ -54,6 +54,7 @@ public class ConfigManager {
     private ParticleConfig placeParticles;
 
     private String untrustedAction;
+    private boolean debug;
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -63,6 +64,8 @@ public class ConfigManager {
         plugin.saveDefaultConfig();
         plugin.reloadConfig();
         config = plugin.getConfig();
+
+        debug = config.getBoolean("debug", false);
 
         requirePortalBridgeFlag = config.getBoolean("require-portalbridge-flag", true);
         requireAcceptTransfers = config.getBoolean("require-accept-transfers", false);

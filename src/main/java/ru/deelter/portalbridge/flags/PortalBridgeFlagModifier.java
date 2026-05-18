@@ -4,6 +4,7 @@ import com.mojang.serialization.DynamicOps;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.jspecify.annotations.NonNull;
+import ru.deelter.portalbridge.PortalBridgePlugin;
 
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -37,6 +38,7 @@ public final class PortalBridgeFlagModifier implements IServerStatusPacketModifi
 
 	@Override
 	public <T> @NonNull T modify(@NonNull DynamicOps<T> ops, @NonNull T value) {
+		PortalBridgePlugin.getInstance().getLogger().info("Injecting flags into status packet");
 		return ops.set(value, FlagCodec.JSON_FIELD, ops.createString(FlagCodec.encodeHex(flags)));
 	}
 

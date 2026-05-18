@@ -1,6 +1,8 @@
 package ru.deelter.portalbridge.portal;
 
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.BlockFace;
@@ -17,140 +19,206 @@ import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.flags.FlagEncoder;
 import ru.deelter.portalbridge.pinger.ServerInfo;
 
+import java.util.Collection;
+
 @RequiredArgsConstructor
 public class PortalListener implements Listener {
 
-    private final PortalBridgePlugin plugin;
+	private final PortalBridgePlugin plugin;
 
-    @EventHandler
-    public void onEntityInteract(PlayerInteractEntityEvent event) {
-        if (!(event.getRightClicked() instanceof Interaction interaction)) return;
+	@EventHandler
+	public void onEntityInteract(@NonNull PlayerInteractEntityEvent event) {
+		if (!(event.getRightClicked() instanceof Interaction interaction)) return;
 
-        Portal portal = plugin.getPortalManager().getPortalByEntity(interaction);
-        if (portal == null || portal.isExpired()) return;
+		Portal portal = plugin.getPortalManager().getPortalByEntity(interaction);
+		if (portal == null || portal.isExpired()) return;
 
-        event.setCancelled(true);
-        Player p = event.getPlayer();
-        if (portal.isOpen()) return;
+		event.setCancelled(true);
+		Player player = event.getPlayer();
 
-        ServerInfo info = portal.getCachedInfo();
-        if (info == null) {
-            plugin.getServerPinger().ping(portal.getTargetHost(), portal.getTargetPort())
-                .thenAccept(i -> {
-                    portal.setCachedInfo(i);
-                    if (!isServerAccepting(i)) {
-                        p.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", p));
-                        return;
-                    }
-                    Bukkit.getScheduler().runTask(plugin, () -> openPortal(p, portal, i));
-                });
-        } else {
-            if (!isServerAccepting(info)) {
-                p.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", p));
-                return;
-            }
-            openPortal(p, portal, info);
-        }
-    }
+		ServerInfo info = portal.getCachedInfo();
 
-    private boolean isServerAccepting(@NonNull ServerInfo info) {
-        return info.hasFlag(FlagEncoder.ServerFlag.PROXY) ||
-               info.hasFlag(FlagEncoder.ServerFlag.TRANSFERS);
-    }
+		if (info == ServerInfo.UNREACHABLE || info == ServerInfo.EMPTY) {
+			openPortal(player, portal, info);
+			return;
+		}
 
-    private void openPortal(@NonNull Player p, Portal portal, ServerInfo info) {
-        applyDoorAnimation(portal, true);
-        plugin.getConfigManager().getOpenSound().play(portal.getLowerDoorLoc());
-        portal.setOpen(true);
+		if (info == null) {
+			plugin.getServerPinger().ping(portal.getTargetHost(), portal.getTargetPort())
+					.thenAccept(receivedInfo -> {
+						portal.setCachedInfo(receivedInfo);
+						if (receivedInfo == ServerInfo.UNREACHABLE || receivedInfo == ServerInfo.EMPTY) {
+							Bukkit.getScheduler().runTask(plugin, () -> openPortal(player, portal, receivedInfo));
+							return;
+						}
+						if (!isServerAccepting(receivedInfo)) {
+							player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
+							return;
+						}
+						Bukkit.getScheduler().runTask(plugin, () -> openPortal(player, portal, receivedInfo));
+					});
+		} else {
+			if (!isServerAccepting(info)) {
+				player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
+				return;
+			}
+			openPortal(player, portal, info);
+		}
+	}
 
-        int checkId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (portal.isExpired() || !portal.isOpen()) {
-                cancelCheckTask(portal);
-                return;
-            }
-            Interaction interaction = portal.getInteraction();
-            if (interaction == null) return;
+	private boolean isServerAccepting(@NonNull ServerInfo info) {
+		return info.hasFlag(FlagEncoder.ServerFlag.PROXY) ||
+				info.hasFlag(FlagEncoder.ServerFlag.TRANSFERS);
+	}
 
-            Location center = interaction.getLocation();
-            double halfW = interaction.getInteractionWidth() / 2.0;
-            double halfH = interaction.getInteractionHeight() / 2.0;
+	private void openPortal(@NonNull Player player, Portal portal, ServerInfo info) {
+		// Открыть дверь, если она закрыта
+		if (!portal.isOpen()) {
+			applyDoorAnimation(portal, true);
+			plugin.getConfigManager().getOpenSound().play(portal.getLowerDoorLoc());
+			portal.setOpen(true);
+		}
 
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                Location loc = player.getLocation();
-                if (loc.getWorld().equals(center.getWorld()) &&
-                    Math.abs(loc.getX() - center.getX()) <= halfW &&
-                    Math.abs(loc.getY() - center.getY()) <= halfH &&
-                    Math.abs(loc.getZ() - center.getZ()) <= halfW) {
+		if (portal.getCheckTaskId() == -1) {
+			startCheckTask(portal);
+		}
 
-                    player.transfer(portal.getTargetHost(), portal.getTargetPort());
-                    plugin.getConfigManager().getCloseSound().play(portal.getLowerDoorLoc());
-                    plugin.getPortalManager().removePortalAnimated(portal.getLowerDoorLoc());
-                    cancelCheckTask(portal);
-                    break;
-                }
-            }
-        }, 0L, 10L).getTaskId();
+		scheduleAutoClose(portal);
+	}
 
-        portal.setCheckTaskId(checkId);
+	private void startCheckTask(Portal portal) {
+		int checkId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+			if (portal.isExpired()) {
+				cancelCheckTask(portal);
+				return;
+			}
+			Interaction interaction = portal.getInteraction();
+			if (interaction == null) return;
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (portal.isOpen() && !portal.isExpired()) {
-                applyDoorAnimation(portal, false);
-                plugin.getConfigManager().getCloseSound().play(portal.getLowerDoorLoc());
-                portal.setOpen(false);
-                cancelCheckTask(portal);
-            }
-        }, 100L);
-    }
+			Location center = interaction.getLocation();
+			double halfW = interaction.getInteractionWidth() / 2.0;
+			double halfH = interaction.getInteractionHeight() / 2.0;
 
-    private void cancelCheckTask(Portal portal) {
-        if (portal.getCheckTaskId() != -1) {
-            Bukkit.getScheduler().cancelTask(portal.getCheckTaskId());
-            portal.setCheckTaskId(-1);
-        }
-    }
+			Collection<Player> nearbyPlayers = center.getNearbyPlayers(2.5);
+			for (Player onlinePlayer : nearbyPlayers) {
+				Location playerLoc = onlinePlayer.getLocation();
+				if (Math.abs(playerLoc.getX() - center.getX()) <= halfW &&
+						Math.abs(playerLoc.getY() - center.getY()) <= halfH &&
+						Math.abs(playerLoc.getZ() - center.getZ()) <= halfW) {
 
-    void applyDoorAnimation(Portal portal, boolean toOpen) {
-        BlockDisplay lower = portal.getLowerDisplay();
-        BlockDisplay upper = portal.getUpperDisplay();
-        if (lower == null || upper == null) return;
+					ServerInfo info = portal.getCachedInfo();
+					boolean hasAuth = info != null && info.hasFlag(FlagEncoder.ServerFlag.AUTH);
+					boolean isWhitelisted = plugin.getTrustListManager().isWhitelisted(portal.getTargetHost(), portal.getTargetPort());
+					boolean hasConsent = plugin.getConsentCache().hasConsent(onlinePlayer.getUniqueId(), portal.getTargetHost(), portal.getTargetPort());
 
-        Door doorData = (Door) lower.getBlock();
-        BlockFace facing = doorData.getFacing();
-        boolean leftHinge = doorData.getHinge() == Door.Hinge.LEFT;
+					if (hasAuth && !isWhitelisted && !hasConsent) {
+						boolean onCooldown = plugin.getConsentCache().isOnCooldown(onlinePlayer.getUniqueId(), portal.getTargetHost(), portal.getTargetPort());
+						if (onCooldown) {
+							String commandText = "/portal force " + portal.getTargetHost() + " " + portal.getTargetPort();
+							Component warning = plugin.getLang().getMessage(
+									"untrusted-warning",
+									onlinePlayer,
+									Placeholder.unparsed("command", commandText)
+							);
+							onlinePlayer.sendMessage(warning);
+							plugin.getConsentCache().setCooldown(onlinePlayer.getUniqueId(), portal.getTargetHost(), portal.getTargetPort());
+							continue;
+						}
+					}
+					onlinePlayer.transfer(portal.getTargetHost(), portal.getTargetPort());
+					sendActionBarMessage(onlinePlayer, portal);
+					scheduleAutoClose(portal);
+				}
+			}
+		}, 0L, 10L).getTaskId();
+		portal.setCheckTaskId(checkId);
+	}
 
-        portal.setOpen(toOpen);
+	private void scheduleAutoClose(Portal portal) {
+		// Отменить предыдущий таймер авто-закрытия
+		if (portal.getAutoCloseTaskId() != -1) {
+			Bukkit.getScheduler().cancelTask(portal.getAutoCloseTaskId());
+			portal.setAutoCloseTaskId(-1);
+		}
 
-        if (portal.getAnimTaskId() != -1) {
-            Bukkit.getScheduler().cancelTask(portal.getAnimTaskId());
-            portal.setAnimTaskId(-1);
-        }
+		// Запланировать закрытие через 5 секунд (100 тиков)
+		int taskId = Bukkit.getScheduler().runTaskLater(plugin, () -> {
+			if (portal.isOpen() && !portal.isExpired()) {
+				applyDoorAnimation(portal, false);
+				plugin.getConfigManager().getCloseSound().play(portal.getLowerDoorLoc());
+				portal.setOpen(false);
+				// Остановить таймер проверки, пока дверь закрыта
+				cancelCheckTask(portal);
+			}
+		}, 100L).getTaskId();
+		portal.setAutoCloseTaskId(taskId);
+	}
 
-        final int totalTicks = plugin.getConfigManager().getOpenTicks();
-        final float openAngle = leftHinge ? 90f : -90f;
-        final float startAngle = toOpen ? 0f : openAngle;
-        final float endAngle   = toOpen ? openAngle : 0f;
+	private void sendActionBarMessage(Player whoEntered, @NonNull Portal portal) {
+		String host = portal.getTargetHost();
+		int port = portal.getTargetPort();
+		String address = port == 25565 ? host : host + ":" + port;
 
-        final int[] tick = {0};
-        int id = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            tick[0]++;
-            float frac = Math.min(1f, (float) tick[0] / totalTicks);
-            float angle = startAngle + (endAngle - startAngle) * frac;
+		Component message = plugin.getLang().getMessage(
+				"player-entered-portal",
+				whoEntered,
+				Placeholder.unparsed("player", whoEntered.getName()),
+				Placeholder.unparsed("target", address)
+		);
+		if (message == null) return;
+		for (Player nearbyPlayer : portal.getLowerDoorLoc().getNearbyPlayers(12)) {
+			nearbyPlayer.sendActionBar(message);
+		}
+	}
 
-            Transformation t = DoorAnimator.buildTransform(facing, leftHinge, angle);
-            lower.setInterpolationDelay(0);
-            upper.setInterpolationDelay(0);
-            lower.setInterpolationDuration(1);
-            upper.setInterpolationDuration(1);
-            lower.setTransformation(t);
-            upper.setTransformation(t);
+	private void cancelCheckTask(@NonNull Portal portal) {
+		if (portal.getCheckTaskId() != -1) {
+			Bukkit.getScheduler().cancelTask(portal.getCheckTaskId());
+			portal.setCheckTaskId(-1);
+		}
+	}
 
-            if (tick[0] >= totalTicks) {
-                int taskId = portal.getAnimTaskId();
-                portal.setAnimTaskId(-1);
-                if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
-            }
-        }, 1L, 1L).getTaskId();
-        portal.setAnimTaskId(id);
-    }
+	void applyDoorAnimation(Portal portal, boolean toOpen) {
+		BlockDisplay lower = portal.getLowerDisplay();
+		BlockDisplay upper = portal.getUpperDisplay();
+		if (lower == null || upper == null) return;
+
+		Door doorData = (Door) lower.getBlock();
+		BlockFace facing = doorData.getFacing();
+		boolean leftHinge = doorData.getHinge() == Door.Hinge.LEFT;
+
+		portal.setOpen(toOpen);
+
+		if (portal.getAnimTaskId() != -1) {
+			Bukkit.getScheduler().cancelTask(portal.getAnimTaskId());
+			portal.setAnimTaskId(-1);
+		}
+
+		final int totalTicks = plugin.getConfigManager().getOpenTicks();
+		final float openAngle = leftHinge ? 90f : -90f;
+		final float startAngle = toOpen ? 0f : openAngle;
+		final float endAngle = toOpen ? openAngle : 0f;
+
+		final int[] tick = {0};
+		int id = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+			tick[0]++;
+			float frac = Math.min(1f, (float) tick[0] / totalTicks);
+			float angle = startAngle + (endAngle - startAngle) * frac;
+
+			Transformation t = DoorAnimator.buildTransform(facing, leftHinge, angle);
+			lower.setInterpolationDelay(0);
+			upper.setInterpolationDelay(0);
+			lower.setInterpolationDuration(1);
+			upper.setInterpolationDuration(1);
+			lower.setTransformation(t);
+			upper.setTransformation(t);
+
+			if (tick[0] >= totalTicks) {
+				int taskId = portal.getAnimTaskId();
+				portal.setAnimTaskId(-1);
+				if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
+			}
+		}, 1L, 1L).getTaskId();
+		portal.setAnimTaskId(id);
+	}
 }

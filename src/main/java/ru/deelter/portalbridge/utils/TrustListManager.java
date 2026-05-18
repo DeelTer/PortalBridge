@@ -27,6 +27,9 @@ public class TrustListManager {
     public boolean isAllowed(ServerInfo info, String host, int port) {
         if (isBlacklisted(host, port)) return false;
         if (isWhitelisted(host, port)) return true;
-        return plugin.getConfigManager().isRequirePortalBridgeFlag() && info.hasPortalBridge();
+
+        if (!plugin.getConfigManager().isRequirePortalBridgeFlag()) return true;
+
+        return info.hasPortalBridge();
     }
 }

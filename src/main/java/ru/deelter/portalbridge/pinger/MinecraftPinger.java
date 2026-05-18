@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +20,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class MinecraftPinger {
 
-	private static final int TIMEOUT_MILLIS = 2000;
+	private static final int TIMEOUT_MILLIS = 3000;
 
 	@Contract("_, _ -> new")
 	public static @NonNull CompletableFuture<ServerInfo> ping(String host, int port) {
@@ -57,6 +58,13 @@ public class MinecraftPinger {
 				}
 			} catch (Exception e) {
 				PortalBridgePlugin.getInstance().getLogger().warning("Failed to ping " + host + ":" + port + " - " + e.getMessage());
+				try {
+					InetAddress address = InetAddress.getByName(host);
+					if (!address.isReachable(TIMEOUT_MILLIS)) {
+						return ServerInfo.UNREACHABLE;
+					}
+				} catch (IOException ignored) {
+				}
 			}
 			return ServerInfo.EMPTY;
 		});
@@ -79,11 +87,9 @@ public class MinecraftPinger {
 					motdRaw = desc.getAsString();
 				} else if (desc.isJsonObject()) {
 					JsonObject descObj = desc.getAsJsonObject();
-					// Сначала флаги (в поле text)
 					if (descObj.has("text")) {
 						motdRaw = descObj.get("text").getAsString();
 					}
-					// Затем extra (MiniMessage)
 					if (descObj.has("extra")) {
 						StringBuilder extraBuilder = new StringBuilder();
 						for (JsonElement e : descObj.getAsJsonArray("extra")) {
@@ -93,11 +99,9 @@ public class MinecraftPinger {
 								extraBuilder.append(extractFullText(e.getAsJsonObject()));
 							}
 						}
-						// Добавляем extra после флагов (если они были)
 						if (motdRaw.isEmpty()) {
 							motdRaw = extraBuilder.toString();
 						} else {
-							// Если motdRaw содержит только невидимые символы (флаги), просто добавим extra
 							motdRaw = motdRaw + extraBuilder.toString();
 						}
 					}
@@ -122,7 +126,6 @@ public class MinecraftPinger {
 		}
 	}
 
-	// Добавь этот метод (если нет)
 	private static @NonNull String extractFullText(@NonNull JsonObject component) {
 		StringBuilder sb = new StringBuilder();
 		if (component.has("text")) {

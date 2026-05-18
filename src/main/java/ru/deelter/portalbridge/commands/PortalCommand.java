@@ -1,3 +1,4 @@
+// PortalCommand.java – полный класс
 package ru.deelter.portalbridge.commands;
 
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.lang.Lang;
+import ru.deelter.portalbridge.pinger.ServerInfo;
 
 import java.util.List;
 import java.util.Set;
@@ -33,14 +35,32 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         }
 
         switch (args[0].toLowerCase()) {
-            case "open"  -> handleOpen(player, args);
-            case "bind"  -> handleBind(player, args);
-            case "hub"   -> handleHub(player);
+            case "open" -> handleOpen(player, args);
+            case "bind" -> handleBind(player, args);
+            case "hub" -> handleHub(player);
             case "admin" -> handleAdmin(player, args);
-            case "help"  -> sendHelp(player);
-            default      -> handleLegacyOpen(player, args);
+            case "help" -> sendHelp(player);
+            case "force" -> handleForce(player, args);
+            default -> handleLegacyOpen(player, args);
         }
         return true;
+    }
+
+    private void handleForce(@NonNull Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage(plugin.getLang().getMessage("usage-force", player));
+            return;
+        }
+        String[] parsed = parseHostPort(args[1]);
+        if (parsed == null) {
+            player.sendMessage(plugin.getLang().getMessage("invalid-port", player));
+            return;
+        }
+        String host = parsed[0];
+        int port = Integer.parseInt(parsed[1]);
+
+        plugin.getConsentCache().grantConsent(player.getUniqueId(), host, port);
+        player.transfer(host, port);
     }
 
     private void handleOpen(Player player, String @NonNull [] args) {
@@ -118,7 +138,6 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
             player.sendMessage(lang.getMessage("help-admin", player));
     }
 
-    // Backwards compat: /portal <host>[:port]
     private void handleLegacyOpen(Player player, String @NonNull [] args) {
         String[] parsed = parseHostPort(args[0]);
         if (parsed == null) {
@@ -132,21 +151,36 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         if (!processing.add(player.getUniqueId())) return;
 
         plugin.getServerPinger().ping(host, port).thenAccept(info -> {
-            if (!plugin.getTrustListManager().isAllowed(info, host, port)) {
-                player.sendMessage(plugin.getLang().getMessage("portal-create-untrusted", player));
-                processing.remove(player.getUniqueId());
+            if (info == ServerInfo.UNREACHABLE || info == ServerInfo.EMPTY) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        int lifetime = plugin.getConfigManager().getPortalLifetimeSeconds();
+                        String error = plugin.getPortalManager().createPortal(player, host, port, lifetime, null, info);
+                        if (error != null) {
+                            player.sendMessage(plugin.getLang().getMessage(error, player));
+                            return;
+                        }
+                        String address = port == 25565 ? host : host + ":" + port;
+                        player.sendMessage(plugin.getLang().getMessage("portal-created-unreachable", player, "target", address));
+                    } finally {
+                        processing.remove(player.getUniqueId());
+                    }
+                });
                 return;
             }
+
+            // Проверяем только чёрный список
             if (plugin.getTrustListManager().isBlacklisted(host, port)) {
                 player.sendMessage(plugin.getLang().getMessage("server-blacklisted", player));
                 processing.remove(player.getUniqueId());
                 return;
             }
 
+            // Создаём портал всегда, доверие не проверяем
             Bukkit.getScheduler().runTask(plugin, () -> {
                 try {
                     int lifetime = plugin.getConfigManager().getPortalLifetimeSeconds();
-                    String error = plugin.getPortalManager().createPortal(player, host, port, lifetime);
+                    String error = plugin.getPortalManager().createPortal(player, host, port, lifetime, null, info);
                     if (error != null) {
                         player.sendMessage(plugin.getLang().getMessage(error, player));
                         return;
@@ -160,7 +194,6 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
         });
     }
 
-    /** Returns [host, portStr] or null if port is invalid. */
     private String @Nullable [] parseHostPort(@NonNull String arg) {
         String host;
         int port;
@@ -181,7 +214,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command cmd, String label, String[] args) {
+    public List<String> onTabComplete(@NonNull CommandSender sender, @NonNull Command cmd, @NonNull String label, String[] args) {
         if (!(sender instanceof Player player)) return List.of();
 
         if (args.length == 1) {

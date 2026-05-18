@@ -15,6 +15,7 @@ import ru.deelter.portalbridge.lang.Lang;
 import ru.deelter.portalbridge.pinger.ServerPinger;
 import ru.deelter.portalbridge.portal.PortalListener;
 import ru.deelter.portalbridge.portal.PortalManager;
+import ru.deelter.portalbridge.utils.ConsentCache;
 import ru.deelter.portalbridge.utils.TrustListManager;
 
 @Getter
@@ -22,6 +23,8 @@ public class PortalBridgePlugin extends JavaPlugin {
 
 	@Getter
 	private static PortalBridgePlugin instance;
+
+	private ConsentCache consentCache;
 	private ConfigManager configManager;
 	private Lang lang;
 	private PortalManager portalManager;
@@ -39,6 +42,7 @@ public class PortalBridgePlugin extends JavaPlugin {
 		serverPinger = new ServerPinger(this);
 		portalManager = new PortalManager(this);
 		doorBindManager = new DoorBindManager(this);
+		consentCache = new ConsentCache();
 
 
 		if (!Bukkit.isAcceptingTransfers()) {

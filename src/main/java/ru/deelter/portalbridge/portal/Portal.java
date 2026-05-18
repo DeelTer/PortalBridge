@@ -29,6 +29,7 @@ public class Portal {
     @Setter private int taskId = -1;
     @Setter private int checkTaskId = -1;
     @Setter private int animTaskId = -1;
+    @Setter private int autoCloseTaskId = -1;
     @Setter private boolean open = false;
     @Setter private ServerInfo cachedInfo;
 

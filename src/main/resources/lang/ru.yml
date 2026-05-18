@@ -1,5 +1,6 @@
 messages:
   portal-created: "<green>✦ Портал на <gold><target></gold> создан. Войдите!"
+  portal-created-unreachable: "<yellow>⚠ Портал на <gold><target></gold> создан, но сервер может быть недоступен."
   portal-expired: "<red>Ваш портал истёк."
   cannot-place-near-player: "<red>Нельзя ставить портал рядом с другим игроком."
   cannot-place-near-portal: "<red>Слишком близко к существующему порталу."
@@ -7,6 +8,7 @@ messages:
   must-look-at-block: "<red>Наведитесь на блок для установки портала."
   hub-returning: "<green>↩ Возвращение в хаб..."
   portal-create-untrusted: "<red>Нельзя создать портал: сервер не доверенный."
+  untrusted-warning: "<red>⚠ Важно: этот сервер не имеет отношения к нам. Осторожнее вводите пароли на сторонних серверах <click:run_command:'<command>'><yellow>[Перейти на сервер]</yellow></click>"
   server-blacklisted: "<red>Нельзя создать портал: сервер в чёрном списке."
   server-not-accepting-transfers: "<red>Сервер не принимает перенаправления."
   server-not-exist: "<red>Сервер недоступен или не существует."
@@ -18,8 +20,12 @@ messages:
   invalid-port: "<red>Неверный порт. Используйте число от 1 до 65535."
   usage-open: "<red>Использование: /portal open <хост>[:порт]"
   usage-bind: "<red>Использование: /portal bind <хост>[:порт]"
+  usage-force: "<red>Использование: /portal force <хост>[:порт]"
   help-header: "<gold>━━━ PortalBridge ━━━"
   help-open: "<gold>/portal open <хост>[:порт] <gray>— открыть портал"
   help-bind: "<gold>/portal bind <хост>[:порт] <gray>— привязать дверь к серверу"
   help-hub: "<gold>/portal hub <gray>— вернуться в хаб"
   help-admin: "<gold>/portal admin <reload|removeall> <gray>— команды администратора"
+  player-entered-portal: "<yellow><player> вошёл в портал на <gold><target></gold>!"
+  server-unreachable: "<red>Сервер недоступен. Проверьте сетевое соединение."
+

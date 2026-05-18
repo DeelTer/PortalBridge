@@ -22,7 +22,7 @@ portal:
   collision-radius: 5.0
   player-proximity-block-radius: 2.0
   max-portals-per-player: 1
-  max-placement-distance: 4
+  max-placement-distance: 6
 
   animation:
     open-ticks: 5
@@ -38,6 +38,7 @@ portal:
     see-through: true
     shadowed: true
     format: "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version>\n<dark_gray>↑ <player>"
+    format-unreached: "<red><bold><host></bold>\n<dark_gray>↑ <player>"
 
   sounds:
     open:

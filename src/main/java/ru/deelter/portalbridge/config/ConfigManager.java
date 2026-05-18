@@ -17,7 +17,6 @@ public class ConfigManager {
     private final JavaPlugin plugin;
     private FileConfiguration config;
 
-    // Trust & flags
     private boolean requirePortalBridgeFlag;
     private boolean requireAcceptTransfers;
 
@@ -26,41 +25,34 @@ public class ConfigManager {
     private boolean whitelistEnabled;
     private boolean blacklistEnabled;
 
-    // Hub
     private String hubHost;
     private int hubPort;
 
-    // Portal placement
     private int portalLifetimeSeconds;
     private double collisionRadius;
     private double playerProximityRadius;
     private int maxPortalsPerPlayer;
     private int maxPlacementDistance;
 
-    // Animation
     private int openTicks;
     private int shrinkTicks;
 
-    // Door entity
     private Material doorMaterial;
     private float interactionWidth;
     private float interactionHeight;
 
-    // Hologram
     private double hologramHeight;
     private boolean hologramSeeThrough;
     private boolean hologramShadowed;
     private String hologramFormat;
+    private String hologramFormatUnreached;
 
-    // Sounds
     private SoundConfig openSound;
     private SoundConfig closeSound;
     private SoundConfig placeSound;
 
-    // Particles
     private ParticleConfig placeParticles;
 
-    // Misc
     private String untrustedAction;
 
     public ConfigManager(JavaPlugin plugin) {
@@ -73,7 +65,7 @@ public class ConfigManager {
         config = plugin.getConfig();
 
         requirePortalBridgeFlag = config.getBoolean("require-portalbridge-flag", true);
-        requireAcceptTransfers = config.getBoolean("require-accept-transfers");
+        requireAcceptTransfers = config.getBoolean("require-accept-transfers", false);
 
         whitelistEnabled = config.getBoolean("trust-lists.whitelist.enabled", true);
         blacklistEnabled = config.getBoolean("trust-lists.blacklist.enabled", true);
@@ -101,10 +93,11 @@ public class ConfigManager {
         hologramShadowed = config.getBoolean("portal.hologram.shadowed", true);
         hologramFormat = config.getString("portal.hologram.format",
                 "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version>\n<dark_gray>↑ <player>");
+        hologramFormatUnreached = config.getString("portal.hologram.format-unreached", hologramFormat);
 
-        openSound  = parseSound("portal.sounds.open",  Sound.BLOCK_WOODEN_DOOR_OPEN,  "BLOCK_WOODEN_DOOR_OPEN",  1.0f, 1.0f);
+        openSound = parseSound("portal.sounds.open", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 1.0f, 1.0f);
         closeSound = parseSound("portal.sounds.close", Sound.BLOCK_WOODEN_DOOR_CLOSE, "BLOCK_WOODEN_DOOR_CLOSE", 1.0f, 1.0f);
-        placeSound = parseSound("portal.sounds.place", Sound.BLOCK_WOODEN_DOOR_OPEN,  "BLOCK_WOODEN_DOOR_OPEN",  0.7f, 1.3f);
+        placeSound = parseSound("portal.sounds.place", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 0.7f, 1.3f);
 
         placeParticles = parseParticles("portal.particles");
 

@@ -24,10 +24,10 @@ public final class FlagDetector {
 		Set<ServerFlag> flags = EnumSet.noneOf(ServerFlag.class);
 		flags.add(ServerFlag.PLUGIN_INSTALLED);
 
-		if (Bukkit.getOnlineMode())            flags.add(ServerFlag.ONLINE_MODE);
-		if (Bukkit.hasWhitelist())             flags.add(ServerFlag.WHITELIST);
+		if (Bukkit.getOnlineMode()) flags.add(ServerFlag.ONLINE_MODE);
+		if (Bukkit.hasWhitelist()) flags.add(ServerFlag.WHITELIST);
 		if (Bukkit.getServer().isLoggingIPs()) flags.add(ServerFlag.LOGS_IP);
-		if (Bukkit.isAcceptingTransfers())     flags.add(ServerFlag.TRANSFERS);
+		if (Bukkit.isAcceptingTransfers()) flags.add(ServerFlag.TRANSFERS);
 
 		Set<String> pluginNames = Stream.of(Bukkit.getPluginManager().getPlugins())
 				.map(Plugin::getName)

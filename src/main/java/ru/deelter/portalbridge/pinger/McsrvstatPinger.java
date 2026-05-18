@@ -17,7 +17,8 @@ import java.util.concurrent.CompletableFuture;
 
 public final class McsrvstatPinger {
 
-	private McsrvstatPinger() {}
+	private McsrvstatPinger() {
+	}
 
 	private static final String API_URL = "https://api.mcsrvstat.us/3/";
 	private static final Duration TIMEOUT = Duration.ofSeconds(5);

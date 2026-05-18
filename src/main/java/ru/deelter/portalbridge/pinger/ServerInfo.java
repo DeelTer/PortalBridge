@@ -7,6 +7,24 @@ import ru.deelter.portalbridge.flags.ServerFlag;
 import java.util.EnumSet;
 import java.util.Set;
 
+/**
+ * Immutable data model for a remote server's status information.
+ * <p>
+ * Contains: player counts, version, MOTD, server capabilities (flags), and reachability.
+ * Instances are fetched asynchronously via {@link ServerPinger} combining:
+ * - mcsrvstat.us API (player count, MOTD, version)
+ * - Raw Minecraft SLP protocol (server flags like auth plugins, anti-cheat, etc.)
+ * <p>
+ * Special instances:
+ * - {@link #EMPTY}: Server responded but with no meaningful data
+ * - {@link #UNREACHABLE}: Server did not respond or connection failed
+ * <p>
+ * Instances are cached by {@link com.github.benmanes.caffeine.cache.Cache} based on
+ * portal lifetime to reduce external API calls.
+ *
+ * @see ServerPinger for fetching logic
+ * @see ServerFlag for available capability flags
+ */
 @Data
 @Builder
 public class ServerInfo {

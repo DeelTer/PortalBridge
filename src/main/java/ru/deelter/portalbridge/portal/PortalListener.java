@@ -22,6 +22,27 @@ import ru.deelter.portalbridge.utils.ConsentCache;
 
 import java.util.UUID;
 
+/**
+ * Handles all player interactions with portals.
+ * <p>
+ * Listens to {@link PlayerInteractEntityEvent} and processes:
+ * 1. Detects right-clicks on portal Interaction entities
+ * 2. Validates server status and safety (whitelist, auth plugins, PortalBridge requirement)
+ * 3. Requests player consent for untrusted servers
+ * 4. Opens portal door animation
+ * 5. Monitors for players inside portal zone
+ * 6. Transfers players to destination and closes portal
+ * <p>
+ * Safety features:
+ * - {@link #canTransfer(Player, Portal)} checks auth requirements and consent
+ * - Whitelist/blacklist enforcement via TrustListManager
+ * - Untrusted server warnings with configurable cooldown
+ * - Automatic door closing after player transfer
+ *
+ * @see Portal for entity structure
+ * @see PortalManager for portal creation/removal
+ * @see ServerInfo for server validation
+ */
 @RequiredArgsConstructor
 public class PortalListener implements Listener {
 

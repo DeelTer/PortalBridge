@@ -11,7 +11,7 @@ import java.util.Set;
 
 public class FlagInjectorLegacy implements Listener {
 
-	private static final char FLAG_SET   = '​';
+	private static final char FLAG_SET = '​';
 	private static final char FLAG_UNSET = '‌';
 
 	private final String encodedFlags;

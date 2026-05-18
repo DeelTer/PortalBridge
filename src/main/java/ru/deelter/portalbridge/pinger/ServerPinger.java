@@ -12,6 +12,32 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Asynchronous server status pinger combining multiple data sources.
+ * <p>
+ * Fetches server information via:
+ * 1. {@link McsrvstatPinger} - HTTP API for player count, MOTD, version
+ * 2. {@link MinecraftPinger} - Raw Minecraft SLP protocol for server flags
+ * 3. Merges results and caches via Caffeine based on config TTL
+ * <p>
+ * Supports SRV DNS records for hostname resolution (e.g., _minecraft._tcp.example.com).
+ * <p>
+ * Usage:
+ * <pre>
+ * pinger.ping("play.example.com", 25565)
+ *   .thenAccept(info -> {
+ *       if (!info.isUnreachable()) {
+ *           System.out.println(info.getOnline() + "/" + info.getMax() + " players");
+ *       }
+ *   });
+ * </pre>
+ * <p>
+ * All pings are cached based on {@code cache.ping-ttl-seconds} config value.
+ *
+ * @see ServerInfo for data model
+ * @see McsrvstatPinger for API pinging
+ * @see MinecraftPinger for SLP flag extraction
+ */
 public class ServerPinger {
 
 	private final Cache<String, ServerInfo> cache;

@@ -11,6 +11,21 @@ import ru.deelter.portalbridge.pinger.ServerInfo;
 
 import java.util.UUID;
 
+/**
+ * Represents an active portal entity within the world.
+ * <p>
+ * A portal consists of:
+ * - Two BlockDisplay entities forming a wooden door (lower + upper half)
+ * - An Interaction entity for detecting right-clicks
+ * - A TextDisplay entity for the holographic information display
+ * - Associated scheduler tasks for expiry, door animation, and player checking
+ * <p>
+ * Portals expire after a configured lifetime and are automatically removed.
+ * Player transfers are initiated when players interact with the Interaction entity.
+ *
+ * @see PortalManager for creation/removal logic
+ * @see PortalListener for player interaction handling
+ */
 @Getter
 @RequiredArgsConstructor
 public class Portal {

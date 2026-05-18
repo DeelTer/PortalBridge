@@ -8,6 +8,45 @@ import ru.deelter.portalbridge.config.ConfigManager;
 import ru.deelter.portalbridge.flags.ServerFlag;
 import ru.deelter.portalbridge.pinger.ServerInfo;
 
+/**
+ * Formats and updates holographic display text for portals.
+ * <p>
+ * Converts server information into MiniMessage-formatted text with:
+ * - Server MOTD (or unavailability message)
+ * - Player count (online/max)
+ * - Server version
+ * - Online-mode icon (✔ green = online mode, ✘ red = offline mode, ? gray = unreachable)
+ * - Countdown timer with color-coded thresholds (green → yellow → red based on % remaining)
+ * - Portal owner name
+ * <p>
+ * Color thresholds are configured via:
+ * - {@code portal.timer.green-threshold} (default 50%)
+ * - {@code portal.timer.yellow-threshold} (default 25%)
+ * <p>
+ * Supports two format strings from config:
+ * - {@code format}: For reachable servers with valid data
+ * - {@code format-unreached}: For unreachable or empty servers
+ * <p>
+ * Usage:
+ * <pre>
+ * PortalDisplayUpdater.update(portal, serverInfo, reachableFormat, unreachableFormat,
+ *     ownerName, secondsRemaining, totalLifetimeSeconds);
+ * </pre>
+ * <p>
+ * Placeholders available in format strings:
+ * <ul>
+ * <li><b>&lt;motd&gt;</b> - Server MOTD or "?"</li>
+ * <li><b>&lt;online&gt;</b>, <b>&lt;max&gt;</b> - Player counts or "?"</li>
+ * <li><b>&lt;version&gt;</b> - Server version or "?"</li>
+ * <li><b>&lt;online_icon&gt;</b> - Colored mode indicator (✔/✘/?)</li>
+ * <li><b>&lt;time&gt;</b>, <b>&lt;colored_time&gt;</b> - Countdown with auto color coding</li>
+ * <li><b>&lt;player&gt;</b> - Portal creator's name</li>
+ * <li><b>&lt;host&gt;</b>, <b>&lt;port&gt;</b> - Server address components</li>
+ * </ul>
+ *
+ * @see Portal for hologram entity reference
+ * @see ServerInfo for server data model
+ */
 public final class PortalDisplayUpdater {
 
 	private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();

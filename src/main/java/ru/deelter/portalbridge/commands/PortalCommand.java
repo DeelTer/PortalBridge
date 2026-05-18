@@ -11,7 +11,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.lang.Lang;
+import ru.deelter.portalbridge.pinger.ServerPinger;
 import ru.deelter.portalbridge.portal.Portal;
+import ru.deelter.portalbridge.portal.PortalManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,10 +22,36 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Handles all /portal command execution and tab-completion.
+ * <p>
+ * Supported subcommands:
+ * - {@code /portal open <host:port>} - Create a portal to target server
+ * - {@code /portal <host:port>} - Shorthand syntax (legacy support)
+ * - {@code /portal hub|lobby} - Transfer to configured hub server
+ * - {@code /portal bind <host:port>} - Bind held door item to server (requires permission)
+ * - {@code /portal force <host:port>} - Grant consent and transfer immediately (requires permission)
+ * - {@code /portal admin reload} - Reload config (requires permission)
+ * - {@code /portal admin removeall} - Remove all portals (requires permission)
+ * - {@code /portal help} - Show help message
+ * <p>
+ * Implements both {@link CommandExecutor} for execution and {@link TabCompleter} for autocomplete.
+ * <p>
+ * Safety features:
+ * - Per-player command cooldown via Caffeine cache
+ * - Processing set prevents duplicate portal creation during async operations
+ * - Blacklist validation before portal creation
+ * - Permission-based access control
+ *
+ * @see PortalManager for portal creation
+ * @see ServerPinger for async server information
+ */
 public class PortalCommand implements CommandExecutor, TabCompleter {
 
 	private record HostPort(String host, int port) {
-		String address() { return port == 25565 ? host : host + ":" + port; }
+		String address() {
+			return port == 25565 ? host : host + ":" + port;
+		}
 	}
 
 	private final PortalBridgePlugin plugin;
@@ -40,24 +68,33 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 	@Override
 	public boolean onCommand(@NonNull CommandSender sender, @NonNull Command command, @NonNull String label, String[] args) {
 		if (!(sender instanceof Player player)) return true;
-		if (args.length == 0) { sendHelp(player); return true; }
+		if (args.length == 0) {
+			sendHelp(player);
+			return true;
+		}
 
 		switch (args[0].toLowerCase()) {
-			case "open"          -> handleOpen(player, args);
-			case "bind"          -> handleBind(player, args);
-			case "hub", "lobby"  -> handleHub(player);
-			case "admin"         -> handleAdmin(player, args);
-			case "help"          -> sendHelp(player);
-			case "force"         -> handleForce(player, args);
-			default              -> handleLegacyOpen(player, args);
+			case "open" -> handleOpen(player, args);
+			case "bind" -> handleBind(player, args);
+			case "hub", "lobby" -> handleHub(player);
+			case "admin" -> handleAdmin(player, args);
+			case "help" -> sendHelp(player);
+			case "force" -> handleForce(player, args);
+			default -> handleLegacyOpen(player, args);
 		}
 		return true;
 	}
 
 	private void handleOpen(Player player, String[] args) {
-		if (args.length < 2) { player.sendMessage(plugin.getLang().getMessage("usage-open", player)); return; }
+		if (args.length < 2) {
+			player.sendMessage(plugin.getLang().getMessage("usage-open", player));
+			return;
+		}
 		HostPort hp = parseHostPort(args[1]);
-		if (hp == null) { player.sendMessage(plugin.getLang().getMessage("invalid-port", player)); return; }
+		if (hp == null) {
+			player.sendMessage(plugin.getLang().getMessage("invalid-port", player));
+			return;
+		}
 		initiatePortal(player, hp);
 	}
 
@@ -66,12 +103,21 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 			player.sendMessage(plugin.getLang().getMessage("no-permission", player));
 			return;
 		}
-		if (args.length < 2) { player.sendMessage(plugin.getLang().getMessage("usage-bind", player)); return; }
+		if (args.length < 2) {
+			player.sendMessage(plugin.getLang().getMessage("usage-bind", player));
+			return;
+		}
 		var item = player.getInventory().getItemInMainHand();
 		var bindManager = plugin.getDoorBindManager();
-		if (!bindManager.isDoor(item)) { player.sendMessage(plugin.getLang().getMessage("bind-no-door", player)); return; }
+		if (!bindManager.isDoor(item)) {
+			player.sendMessage(plugin.getLang().getMessage("bind-no-door", player));
+			return;
+		}
 		HostPort hp = parseHostPort(args[1]);
-		if (hp == null) { player.sendMessage(plugin.getLang().getMessage("invalid-port", player)); return; }
+		if (hp == null) {
+			player.sendMessage(plugin.getLang().getMessage("invalid-port", player));
+			return;
+		}
 		bindManager.bind(item, hp.host(), hp.port());
 		player.sendMessage(plugin.getLang().getMessage("bind-success", player, "target", hp.address()));
 	}
@@ -101,9 +147,15 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 	}
 
 	private void handleForce(Player player, String[] args) {
-		if (args.length < 2) { player.sendMessage(plugin.getLang().getMessage("usage-force", player)); return; }
+		if (args.length < 2) {
+			player.sendMessage(plugin.getLang().getMessage("usage-force", player));
+			return;
+		}
 		HostPort hp = parseHostPort(args[1]);
-		if (hp == null) { player.sendMessage(plugin.getLang().getMessage("invalid-port", player)); return; }
+		if (hp == null) {
+			player.sendMessage(plugin.getLang().getMessage("invalid-port", player));
+			return;
+		}
 		plugin.getConsentCache().grantConsent(player.getUniqueId(), hp.host(), hp.port());
 		player.transfer(hp.host(), hp.port());
 	}
@@ -112,14 +164,17 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 		Lang lang = plugin.getLang();
 		player.sendMessage(lang.getMessage("help-header", player));
 		player.sendMessage(lang.getMessage("help-open", player));
-		if (player.hasPermission("portalbridge.bind"))  player.sendMessage(lang.getMessage("help-bind", player));
+		if (player.hasPermission("portalbridge.bind")) player.sendMessage(lang.getMessage("help-bind", player));
 		player.sendMessage(lang.getMessage("help-hub", player));
 		if (player.hasPermission("portalbridge.admin")) player.sendMessage(lang.getMessage("help-admin", player));
 	}
 
 	private void handleLegacyOpen(Player player, String[] args) {
 		HostPort hp = parseHostPort(args[0]);
-		if (hp == null) { player.sendMessage(plugin.getLang().getMessage("invalid-port", player)); return; }
+		if (hp == null) {
+			player.sendMessage(plugin.getLang().getMessage("invalid-port", player));
+			return;
+		}
 		initiatePortal(player, hp);
 	}
 

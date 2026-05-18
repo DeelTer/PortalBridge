@@ -1,3 +1,6 @@
+# PortalBridge Configuration
+# See README.md for detailed documentation
+
 language:
   default: "en"
   auto-detect: true
@@ -6,36 +9,30 @@ hub:
   host: "cominers.net"
   port: 25565
 
+# Trust lists - control which servers are accessible
 trust-lists:
   whitelist:
-    enabled: false
-    entries: []
+    enabled: false                  # Only allow these servers if true
+    entries: []                     # Format: ["hostname:port", "hostname"]
   blacklist:
-    enabled: false
+    enabled: false                  # Block these servers if true
     entries: []
 
-require-portalbridge-flag: true
-require-accept-transfers: false
+require-portalbridge-flag: true     # Target must have PortalBridge installed
+require-accept-transfers: false     # Target must accept-transfers=true (disable for proxy)
 
 portal:
-  lifetime-seconds: 30
-  collision-radius: 5.0
-  player-proximity-block-radius: 2.0
+  lifetime-seconds: 30              # Seconds before portal expires
+  collision-radius: 5.0             # Min distance between portals
+  player-proximity-block-radius: 2.0 # Min distance from other players
   max-portals-per-player: 1
   max-placement-distance: 6
-  timer:
-    green-threshold: 50
-    yellow-threshold: 25
 
   animation:
-    open-ticks: 5
-    shrink-ticks: 6
-
-  # Ticks before an opened portal auto-closes after a player enters (20 ticks = 1 second)
-  auto-close-ticks: 100
-
-  # Radius (blocks) for action-bar notifications when a player enters a portal
-  notify-radius: 12.0
+    open-ticks: 5                   # Door open animation duration
+    shrink-ticks: 6                 # Portal shrink-out animation
+  auto-close-ticks: 100             # Ticks before portal auto-closes after player enters
+  notify-radius: 12.0               # Radius for action-bar notifications
 
   door:
     material: SPRUCE_DOOR
@@ -46,6 +43,11 @@ portal:
     height: 3.4
     see-through: true
     shadowed: true
+    timer:
+      green-threshold: 50           # % of lifetime where timer is green
+      yellow-threshold: 25          # % below green where timer is yellow, else red
+
+    # MiniMessage format - placeholders: <motd>, <online>, <max>, <version>, <host>, <port>, <player>, <time>, <online_icon>
     format: "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version> <online_icon>\n<dark_gray>↑ <player> · <time>"
     format-unreached: "<red><bold><host></bold>\n<dark_gray>↑ <player>"
 
@@ -70,24 +72,17 @@ portal:
     spread: 0.3
 
 cache:
-  ping-ttl-seconds: 120
+  ping-ttl-seconds: 120             # Cache duration for mcsrvstat responses
   max-size: 100
 
-# Ping timeout in milliseconds (for MinecraftPinger)
-ping-timeout-millis: 5000
+ping-timeout-millis: 5000           # Timeout for server pinging
+portal-check-radius: 2.5            # Radius to check for players in portal
 
-# Radius to check for players near the portal
-portal-check-radius: 2.5
+command-cooldown-seconds: 2         # Cooldown between /portal open commands
 
-# Command cooldown between /portal open usages (seconds)
-command-cooldown-seconds: 2
-
-# Consent cache settings
 consent:
-  # How long consent is remembered (seconds, default 1 hour)
-  ttl-seconds: 3600
-  # Cooldown between repeated untrusted-server warnings (seconds)
-  cooldown-seconds: 15
+  ttl-seconds: 3600                 # How long to remember player consent
+  cooldown-seconds: 15              # Cooldown between repeated warnings
 
 updates:
   check-enabled: true

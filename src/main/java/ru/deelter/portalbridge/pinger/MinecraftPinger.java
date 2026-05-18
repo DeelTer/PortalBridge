@@ -20,7 +20,8 @@ import java.util.concurrent.CompletableFuture;
 
 public final class MinecraftPinger {
 
-	private MinecraftPinger() {}
+	private MinecraftPinger() {
+	}
 
 	public static @NonNull CompletableFuture<Set<ServerFlag>> fetchFlags(@NonNull String host, int port) {
 		int timeoutMillis = PortalBridgePlugin.getInstance().getConfigManager().getPingTimeoutMillis();

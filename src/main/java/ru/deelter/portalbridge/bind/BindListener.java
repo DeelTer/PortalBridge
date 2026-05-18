@@ -31,37 +31,32 @@ public class BindListener implements Listener {
         DoorBindManager bindManager = plugin.getDoorBindManager();
         if (!bindManager.isDoor(item)) return;
 
-        BindData data = bindManager.getBindData(item);
-        if (data == null) return;
+        BindData bindData = bindManager.getBindData(item);
+        if (bindData == null) return;
 
         event.setCancelled(true);
         Player player = event.getPlayer();
 
-        // 1. Создаём портал мгновенно
-        int lifetime = plugin.getConfigManager().getPortalLifetimeSeconds();
-        Portal portal = plugin.getPortalManager().createPortal(player, data.host(), data.port(), lifetime, data.material(), null);
+        int lifetimeSeconds = plugin.getConfigManager().getPortalLifetimeSeconds();
+        Portal portal = plugin.getPortalManager().createPortal(player, bindData.host(), bindData.port(), lifetimeSeconds, bindData.material(), null);
         if (portal == null) {
             player.sendMessage(plugin.getLang().getMessage("portal-creation-failed", player));
             return;
         }
 
-        String address = data.port() == 25565 ? data.host() : data.host() + ":" + data.port();
+        String address = bindData.port() == 25565 ? bindData.host() : bindData.host() + ":" + bindData.port();
         player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
 
-        // 2. Асинхронно получаем данные и обновляем голограмму
-        plugin.getServerPinger().ping(data.host(), data.port()).thenAccept(info -> {
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                portal.setCachedInfo(info);
-                PortalDisplayUpdater.update(portal, info,
-                        plugin.getConfigManager().getHologramFormat(),
-                        plugin.getConfigManager().getHologramFormatUnreached(),
-                        player.getName());
-                // Если данные неполные или сервер недоступен, показываем дополнительное сообщение
-                if (info == ServerInfo.EMPTY || info == ServerInfo.UNREACHABLE ||
-                        (info.getMotd() != null && info.getFlags().isEmpty())) {
-                    player.sendMessage(plugin.getLang().getMessage("portal-created-unreachable", player, "target", address));
-                }
-            });
+        plugin.getServerPinger().ping(bindData.host(), bindData.port()).thenAccept(serverInfo -> {
+            Bukkit.getScheduler().runTask(plugin, () -> updatePortalWithInfo(portal, serverInfo, player));
         });
+    }
+
+    private void updatePortalWithInfo(@NonNull Portal portal, ServerInfo serverInfo, @NonNull Player player) {
+        portal.setCachedInfo(serverInfo);
+        PortalDisplayUpdater.update(portal, serverInfo,
+                plugin.getConfigManager().getHologramFormat(),
+                plugin.getConfigManager().getHologramFormatUnreached(),
+                player.getName());
     }
 }

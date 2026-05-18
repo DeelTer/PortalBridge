@@ -53,8 +53,9 @@ public class ConfigManager {
 
     private ParticleConfig placeParticles;
 
-    private String untrustedAction;
     private boolean debug;
+    private int pingTimeoutMillis;
+    private double portalCheckRadius;
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -66,6 +67,8 @@ public class ConfigManager {
         config = plugin.getConfig();
 
         debug = config.getBoolean("debug", false);
+        pingTimeoutMillis = config.getInt("ping-timeout-millis", 5000);
+        portalCheckRadius = config.getDouble("portal-check-radius", 2.5);
 
         requirePortalBridgeFlag = config.getBoolean("require-portalbridge-flag", true);
         requireAcceptTransfers = config.getBoolean("require-accept-transfers", false);
@@ -96,15 +99,14 @@ public class ConfigManager {
         hologramShadowed = config.getBoolean("portal.hologram.shadowed", true);
         hologramFormat = config.getString("portal.hologram.format",
                 "<gold><bold><motd></bold>\n<green>● <online><gray>/<max>\n<gray><version>\n<dark_gray>↑ <player>");
-        hologramFormatUnreached = config.getString("portal.hologram.format-unreached", hologramFormat);
+        hologramFormatUnreached = config.getString("portal.hologram.format-unreached",
+                "<red><bold><host></bold>\n<dark_gray>↑ <player>");
 
         openSound = parseSound("portal.sounds.open", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 1.0f, 1.0f);
         closeSound = parseSound("portal.sounds.close", Sound.BLOCK_WOODEN_DOOR_CLOSE, "BLOCK_WOODEN_DOOR_CLOSE", 1.0f, 1.0f);
         placeSound = parseSound("portal.sounds.place", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 0.7f, 1.3f);
 
         placeParticles = parseParticles("portal.particles");
-
-        untrustedAction = config.getString("untrusted.action", "WARN_AND_BLOCK");
     }
 
     private Material parseMaterial(@NonNull String name, Material fallback) {

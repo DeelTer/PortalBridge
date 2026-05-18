@@ -14,58 +14,57 @@ import java.util.concurrent.TimeUnit;
 
 public class ServerPinger {
 
-	private final Cache<String, ServerInfo> cache;
+    private final Cache<String, ServerInfo> cache;
 
-	public ServerPinger(@NonNull PortalBridgePlugin plugin) {
-		long ttlSeconds = plugin.getConfig().getLong("cache.ping-ttl-seconds", plugin.getConfig().getLong("portal.lifetime-seconds", 30));
-		long maxSize = plugin.getConfig().getLong("cache.max-size", 100);
-		this.cache = Caffeine.newBuilder()
-				.expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
-				.maximumSize(maxSize)
-				.build();
-	}
+    public ServerPinger(@NonNull PortalBridgePlugin plugin) {
+        long ttlSeconds = plugin.getConfig().getLong("cache.ping-ttl-seconds", plugin.getConfig().getLong("portal.lifetime-seconds", 30));
+        long maxSize = plugin.getConfig().getLong("cache.max-size", 100);
+        this.cache = Caffeine.newBuilder()
+                .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
+                .maximumSize(maxSize)
+                .build();
+    }
 
-	public @NonNull CompletableFuture<ServerInfo> ping(@NonNull String host, int port) {
-		// Если порт стандартный (25565), пробуем SRV-запись
-		if (port == 25565) {
-			SrvResolver.SrvRecord srv = SrvResolver.resolve(host);
-			if (srv != null) {
-				host = srv.target();
-				port = srv.port();
-			}
-		}
-		String key = host + ":" + port;
-		ServerInfo cached = cache.getIfPresent(key);
-		if (cached != null) return CompletableFuture.completedFuture(cached);
+    public @NonNull CompletableFuture<ServerInfo> ping(@NonNull String host, int port) {
+        if (port == 25565) {
+            SrvResolver.SrvRecord srvRecord = SrvResolver.resolve(host);
+            if (srvRecord != null) {
+                host = srvRecord.target();
+                port = srvRecord.port();
+            }
+        }
+        String cacheKey = host + ":" + port;
+        ServerInfo cachedInfo = cache.getIfPresent(cacheKey);
+        if (cachedInfo != null) return CompletableFuture.completedFuture(cachedInfo);
 
-		CompletableFuture<ServerInfo> infoFut = McsrvstatPinger.fetch(host, port);
-		CompletableFuture<Set<ServerFlag>> flagsFut = MinecraftPinger.fetchFlags(host, port);
+        CompletableFuture<ServerInfo> apiInfoFuture = McsrvstatPinger.fetch(host, port);
+        CompletableFuture<Set<ServerFlag>> flagsFuture = MinecraftPinger.fetchFlags(host, port);
 
-		return infoFut.thenCombine(flagsFut, (info, flags) -> {
-			ServerInfo merged = mergeFlags(info, flags);
-			if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
-				PortalBridgePlugin.getInstance().getLogger().info("Merged info for " + key + ": motd=" + info.getMotd() + ", flags=" + flags);
-			}
-			cache.put(key, merged);
-			return merged;
-		});
-	}
+        return apiInfoFuture.thenCombine(flagsFuture, (apiInfo, flags) -> {
+            ServerInfo mergedInfo = mergeInfo(apiInfo, flags);
+            if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
+                PortalBridgePlugin.getInstance().getLogger().info("Merged info for " + cacheKey + ": motd=" + apiInfo.getMotd() + ", flags=" + flags);
+            }
+            cache.put(cacheKey, mergedInfo);
+            return mergedInfo;
+        });
+    }
 
-	public void invalidate(@NonNull String host, int port) {
-		cache.invalidate(host + ":" + port);
-	}
+    public void invalidate(@NonNull String host, int port) {
+        cache.invalidate(host + ":" + port);
+    }
 
-	private @NonNull ServerInfo mergeFlags(@NonNull ServerInfo info, @NonNull Set<ServerFlag> flags) {
-		if (info == ServerInfo.UNREACHABLE) {
-			return ServerInfo.builder().unreachable(true).flags(EnumSet.copyOf(flags)).build();
-		}
-		return ServerInfo.builder()
-				.motd(info.getMotd())
-				.online(info.getOnline())
-				.max(info.getMax())
-				.version(info.getVersion())
-				.flags(EnumSet.copyOf(flags))
-				.unreachable(info.isUnreachable())
-				.build();
-	}
+    private @NonNull ServerInfo mergeInfo(@NonNull ServerInfo apiInfo, @NonNull Set<ServerFlag> flags) {
+        if (apiInfo == ServerInfo.UNREACHABLE) {
+            return ServerInfo.builder().unreachable(true).flags(EnumSet.copyOf(flags)).build();
+        }
+        return ServerInfo.builder()
+                .motd(apiInfo.getMotd())
+                .online(apiInfo.getOnline())
+                .max(apiInfo.getMax())
+                .version(apiInfo.getVersion())
+                .flags(EnumSet.copyOf(flags))
+                .unreachable(apiInfo.isUnreachable())
+                .build();
+    }
 }

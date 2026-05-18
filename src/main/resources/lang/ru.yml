@@ -1,6 +1,5 @@
 messages:
   portal-created: "<green>✦ Портал на <gold><target></gold> создан. Войдите!"
-  portal-created-unreachable: "<yellow>⚠ Портал на <gold><target></gold> создан, но сервер может быть недоступен."
   portal-expired: "<red>Ваш портал истёк."
   cannot-place-near-player: "<red>Нельзя ставить портал рядом с другим игроком."
   cannot-place-near-portal: "<red>Слишком близко к существующему порталу."
@@ -8,7 +7,7 @@ messages:
   must-look-at-block: "<red>Наведитесь на блок для установки портала."
   hub-returning: "<green>↩ Возвращение в хаб..."
   portal-create-untrusted: "<red>Нельзя создать портал: сервер не доверенный."
-  untrusted-warning: "<red>⚠ Важно: этот сервер не имеет отношения к нам. Осторожнее вводите пароли на сторонних серверах <click:run_command:'<command>'><yellow>[Перейти на сервер]</yellow></click>"
+  untrusted-warning: "<red>⚠ Важно: этот сервер не имеет отношения к нам. Осторожнее вводите пароли на сторонних серверах\n<click:run_command:<command>><yellow>[Перейти на сервер]</yellow></click>"
   server-blacklisted: "<red>Нельзя создать портал: сервер в чёрном списке."
   server-not-accepting-transfers: "<red>Сервер не принимает перенаправления."
   server-not-exist: "<red>Сервер недоступен или не существует."
@@ -31,5 +30,3 @@ messages:
   server-no-portalbridge: "<red>На этом сервере нет плагина PortalBridge. Переход может быть небезопасен."
   portal-creation-failed: "<red>Не удалось создать портал. Попробуйте снова."
   please-wait: "<yellow>Подождите немного перед созданием портала на тот же сервер."
-
-

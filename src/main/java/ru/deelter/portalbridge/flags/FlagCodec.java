@@ -10,7 +10,8 @@ public final class FlagCodec {
 
 	public static final String JSON_FIELD = "portalbridge_flags";
 
-	private FlagCodec() {}
+	private FlagCodec() {
+	}
 
 	public static int encode(@NonNull Set<ServerFlag> flags) {
 		int bits = 0;

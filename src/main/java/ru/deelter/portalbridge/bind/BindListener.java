@@ -19,44 +19,48 @@ import ru.deelter.portalbridge.portal.PortalDisplayUpdater;
 @RequiredArgsConstructor
 public class BindListener implements Listener {
 
-    private final PortalBridgePlugin plugin;
+	private final PortalBridgePlugin plugin;
 
-    @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) return;
-        Action action = event.getAction();
-        if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR) return;
+	@EventHandler
+	public void onInteract(PlayerInteractEvent event) {
+		if (event.getHand() != EquipmentSlot.HAND) return;
+		Action action = event.getAction();
+		if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR) return;
 
-        ItemStack item = event.getItem();
-        DoorBindManager bindManager = plugin.getDoorBindManager();
-        if (!bindManager.isDoor(item)) return;
+		ItemStack item = event.getItem();
+		DoorBindManager bindManager = plugin.getDoorBindManager();
+		if (!bindManager.isDoor(item)) return;
 
-        BindData bindData = bindManager.getBindData(item);
-        if (bindData == null) return;
+		BindData bindData = bindManager.getBindData(item);
+		if (bindData == null) return;
 
-        event.setCancelled(true);
-        Player player = event.getPlayer();
+		event.setCancelled(true);
+		Player player = event.getPlayer();
 
-        int lifetimeSeconds = plugin.getConfigManager().getPortalLifetimeSeconds();
-        Portal portal = plugin.getPortalManager().createPortal(player, bindData.host(), bindData.port(), lifetimeSeconds, bindData.material(), null);
-        if (portal == null) {
-            player.sendMessage(plugin.getLang().getMessage("portal-creation-failed", player));
-            return;
-        }
+		int lifetimeSeconds = plugin.getConfigManager().getPortalLifetimeSeconds();
+		Portal portal = plugin.getPortalManager().createPortal(player, bindData.host(), bindData.port(), lifetimeSeconds, bindData.material(), null);
+		if (portal == null) {
+			player.sendMessage(plugin.getLang().getMessage("portal-creation-failed", player));
+			return;
+		}
 
-        String address = bindData.port() == 25565 ? bindData.host() : bindData.host() + ":" + bindData.port();
-        player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
+		String address = bindData.port() == 25565 ? bindData.host() : bindData.host() + ":" + bindData.port();
+		player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
 
-        plugin.getServerPinger().ping(bindData.host(), bindData.port()).thenAccept(serverInfo -> {
-            Bukkit.getScheduler().runTask(plugin, () -> updatePortalWithInfo(portal, serverInfo, player));
-        });
-    }
+		plugin.getServerPinger().ping(bindData.host(), bindData.port()).thenAccept(serverInfo -> {
+			Bukkit.getScheduler().runTask(plugin, () -> updatePortalWithInfo(portal, serverInfo, player, lifetimeSeconds));
+		});
+	}
 
-    private void updatePortalWithInfo(@NonNull Portal portal, ServerInfo serverInfo, @NonNull Player player) {
-        portal.setCachedInfo(serverInfo);
-        PortalDisplayUpdater.update(portal, serverInfo,
-                plugin.getConfigManager().getHologramFormat(),
-                plugin.getConfigManager().getHologramFormatUnreached(),
-                player.getName());
-    }
+	private void updatePortalWithInfo(@NonNull Portal portal, ServerInfo serverInfo, @NonNull Player player, int lifetimeSeconds) {
+		portal.setCachedInfo(serverInfo);
+		long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
+		if (remaining < 0) remaining = 0;
+		PortalDisplayUpdater.update(portal, serverInfo,
+				plugin.getConfigManager().getHologramFormat(),
+				plugin.getConfigManager().getHologramFormatUnreached(),
+				player.getName(),
+				(int) remaining,
+				lifetimeSeconds);
+	}
 }

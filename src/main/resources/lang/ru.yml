@@ -7,7 +7,7 @@ messages:
   must-look-at-block: "<red>Наведитесь на блок для установки портала."
   hub-returning: "<green>↩ Возвращение в хаб..."
   portal-create-untrusted: "<red>Нельзя создать портал: сервер не доверенный."
-  untrusted-warning: "<red>⚠ Важно: этот сервер не имеет отношения к нам. Осторожнее вводите пароли на сторонних серверах\n<click:run_command:<command>><yellow>[Перейти на сервер]</yellow></click>"
+  untrusted-warning: "<red>⚠ Важно: этот сервер не имеет отношения к нам. Осторожнее вводите пароли на сторонних серверах\n<click:run_command:'<command>'><yellow>[Перейти на сервер]</yellow></click>"
   server-blacklisted: "<red>Нельзя создать портал: сервер в чёрном списке."
   server-not-accepting-transfers: "<red>Сервер не принимает перенаправления."
   server-not-exist: "<red>Сервер недоступен или не существует."

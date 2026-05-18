@@ -22,10 +22,10 @@ public final class PortalBridgeFlagModifier implements IServerStatusPacketModifi
 
 	public PortalBridgeFlagModifier() {
 		flags.add(ServerFlag.PLUGIN_INSTALLED);
-		if (Bukkit.getOnlineMode())            flags.add(ServerFlag.ONLINE_MODE);
-		if (Bukkit.hasWhitelist())             flags.add(ServerFlag.WHITELIST);
+		if (Bukkit.getOnlineMode()) flags.add(ServerFlag.ONLINE_MODE);
+		if (Bukkit.hasWhitelist()) flags.add(ServerFlag.WHITELIST);
 		if (Bukkit.getServer().isLoggingIPs()) flags.add(ServerFlag.LOGS_IP);
-		if (Bukkit.isAcceptingTransfers())     flags.add(ServerFlag.TRANSFERS);
+		if (Bukkit.isAcceptingTransfers()) flags.add(ServerFlag.TRANSFERS);
 
 		Set<String> pluginNames = new HashSet<>();
 		for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) pluginNames.add(plugin.getName().toLowerCase());
@@ -38,7 +38,11 @@ public final class PortalBridgeFlagModifier implements IServerStatusPacketModifi
 
 	@Override
 	public <T> @NonNull T modify(@NonNull DynamicOps<T> ops, @NonNull T value) {
-		PortalBridgePlugin.getInstance().getLogger().info("Injecting flags into status packet");
+		PortalBridgePlugin plugin = PortalBridgePlugin.getInstance();
+
+		if (plugin.getConfigManager().isDebug()) {
+			plugin.getLogger().info("Injecting flags into status packet");
+		}
 		return ops.set(value, FlagCodec.JSON_FIELD, ops.createString(FlagCodec.encodeHex(flags)));
 	}
 

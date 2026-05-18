@@ -22,85 +22,85 @@ import java.util.concurrent.CompletableFuture;
 @NoArgsConstructor
 public final class MinecraftPinger {
 
-    public static @NonNull CompletableFuture<Set<ServerFlag>> fetchFlags(@NonNull String host, int port) {
-        int timeoutMillis = PortalBridgePlugin.getInstance().getConfigManager().getPingTimeoutMillis();
-        return CompletableFuture.supplyAsync(() -> {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(host, port), timeoutMillis);
-                socket.setSoTimeout(timeoutMillis);
+	public static @NonNull CompletableFuture<Set<ServerFlag>> fetchFlags(@NonNull String host, int port) {
+		int timeoutMillis = PortalBridgePlugin.getInstance().getConfigManager().getPingTimeoutMillis();
+		return CompletableFuture.supplyAsync(() -> {
+			try (Socket socket = new Socket()) {
+				socket.connect(new InetSocketAddress(host, port), timeoutMillis);
+				socket.setSoTimeout(timeoutMillis);
 
-                DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+				DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+				DataInputStream inputStream = new DataInputStream(socket.getInputStream());
 
-                ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-                DataOutputStream handshakeStream = new DataOutputStream(byteBuffer);
-                handshakeStream.writeByte(0x00);
-                writeVarInt(handshakeStream, -1);
-                writeVarInt(handshakeStream, host.length());
-                handshakeStream.writeBytes(host);
-                handshakeStream.writeShort(port);
-                writeVarInt(handshakeStream, 1);
+				ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+				DataOutputStream handshakeStream = new DataOutputStream(byteBuffer);
+				handshakeStream.writeByte(0x00);
+				writeVarInt(handshakeStream, -1);
+				writeVarInt(handshakeStream, host.length());
+				handshakeStream.writeBytes(host);
+				handshakeStream.writeShort(port);
+				writeVarInt(handshakeStream, 1);
 
-                byte[] handshakePacket = byteBuffer.toByteArray();
-                writeVarInt(outputStream, handshakePacket.length);
-                outputStream.write(handshakePacket);
+				byte[] handshakePacket = byteBuffer.toByteArray();
+				writeVarInt(outputStream, handshakePacket.length);
+				outputStream.write(handshakePacket);
 
-                writeVarInt(outputStream, 1);
-                outputStream.writeByte(0x00);
+				writeVarInt(outputStream, 1);
+				outputStream.writeByte(0x00);
 
-                readVarInt(inputStream); // size
-                int packetId = readVarInt(inputStream);
-                if (packetId != 0x00) return EnumSet.noneOf(ServerFlag.class);
+				readVarInt(inputStream); // size
+				int packetId = readVarInt(inputStream);
+				if (packetId != 0x00) return EnumSet.noneOf(ServerFlag.class);
 
-                int jsonLength = readVarInt(inputStream);
-                byte[] jsonData = new byte[jsonLength];
-                inputStream.readFully(jsonData);
+				int jsonLength = readVarInt(inputStream);
+				byte[] jsonData = new byte[jsonLength];
+				inputStream.readFully(jsonData);
 
-                String json = new String(jsonData, StandardCharsets.UTF_8);
-                if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
-                    PortalBridgePlugin.getInstance().getLogger().info("SLP response for " + host + ":" + port + ": " + json);
-                }
-                return parseFlags(json);
-            } catch (Exception exception) {
-                if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
-                    PortalBridgePlugin.getInstance().getLogger().warning("Failed to fetch flags from " + host + ":" + port + " - " + exception.getMessage());
-                }
-                return EnumSet.noneOf(ServerFlag.class);
-            }
-        });
-    }
+				String json = new String(jsonData, StandardCharsets.UTF_8);
+				if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
+					PortalBridgePlugin.getInstance().getLogger().info("SLP response for " + host + ":" + port + ": " + json);
+				}
+				return parseFlags(json);
+			} catch (Exception exception) {
+				if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
+					PortalBridgePlugin.getInstance().getLogger().warning("Failed to fetch flags from " + host + ":" + port + " - " + exception.getMessage());
+				}
+				return EnumSet.noneOf(ServerFlag.class);
+			}
+		});
+	}
 
-    private static @NonNull Set<ServerFlag> parseFlags(@NonNull String json) {
-        try {
-            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-            if (!root.has(FlagCodec.JSON_FIELD)) return EnumSet.noneOf(ServerFlag.class);
-            Set<ServerFlag> flags = FlagCodec.decode(root.get(FlagCodec.JSON_FIELD).getAsString());
-            if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
-                PortalBridgePlugin.getInstance().getLogger().info("Decoded flags: " + flags);
-            }
-            return flags;
-        } catch (Exception exception) {
-            return EnumSet.noneOf(ServerFlag.class);
-        }
-    }
+	private static @NonNull Set<ServerFlag> parseFlags(@NonNull String json) {
+		try {
+			JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+			if (!root.has(FlagCodec.JSON_FIELD)) return EnumSet.noneOf(ServerFlag.class);
+			Set<ServerFlag> flags = FlagCodec.decode(root.get(FlagCodec.JSON_FIELD).getAsString());
+			if (PortalBridgePlugin.getInstance().getConfigManager().isDebug()) {
+				PortalBridgePlugin.getInstance().getLogger().info("Decoded flags: " + flags);
+			}
+			return flags;
+		} catch (Exception exception) {
+			return EnumSet.noneOf(ServerFlag.class);
+		}
+	}
 
-    private static void writeVarInt(@NonNull DataOutputStream outputStream, int value) throws IOException {
-        while ((value & -128) != 0) {
-            outputStream.writeByte(value & 127 | 128);
-            value >>>= 7;
-        }
-        outputStream.writeByte(value);
-    }
+	private static void writeVarInt(@NonNull DataOutputStream outputStream, int value) throws IOException {
+		while ((value & -128) != 0) {
+			outputStream.writeByte(value & 127 | 128);
+			value >>>= 7;
+		}
+		outputStream.writeByte(value);
+	}
 
-    private static int readVarInt(@NonNull DataInputStream inputStream) throws IOException {
-        int result = 0;
-        int shift = 0;
-        byte currentByte;
-        do {
-            currentByte = inputStream.readByte();
-            result |= (currentByte & 0x7F) << shift;
-            shift += 7;
-        } while ((currentByte & 0x80) != 0);
-        return result;
-    }
+	private static int readVarInt(@NonNull DataInputStream inputStream) throws IOException {
+		int result = 0;
+		int shift = 0;
+		byte currentByte;
+		do {
+			currentByte = inputStream.readByte();
+			result |= (currentByte & 0x7F) << shift;
+			shift += 7;
+		} while ((currentByte & 0x80) != 0);
+		return result;
+	}
 }

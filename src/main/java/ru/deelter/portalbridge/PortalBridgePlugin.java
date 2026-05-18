@@ -22,106 +22,106 @@ import ru.deelter.portalbridge.utils.TrustListManager;
 @Getter
 public class PortalBridgePlugin extends JavaPlugin {
 
-    private static PortalBridgePlugin instance;
+	private static PortalBridgePlugin instance;
 
-    public static PortalBridgePlugin getInstance() {
-        return instance;
-    }
+	public static PortalBridgePlugin getInstance() {
+		return instance;
+	}
 
-    private ConsentCache consentCache;
-    private ConfigManager configManager;
-    private Lang lang;
-    private PortalManager portalManager;
-    private ServerPinger serverPinger;
-    private TrustListManager trustListManager;
-    private DoorBindManager doorBindManager;
-    private IServerStatusPacketModifierManager flagManager;
-    private boolean flagInjectionFallbackEnabled = false;
+	private ConsentCache consentCache;
+	private ConfigManager configManager;
+	private Lang lang;
+	private PortalManager portalManager;
+	private ServerPinger serverPinger;
+	private TrustListManager trustListManager;
+	private DoorBindManager doorBindManager;
+	private IServerStatusPacketModifierManager flagManager;
+	private boolean flagInjectionFallbackEnabled = false;
 
-    @Override
-    public void onEnable() {
-        instance = this;
-        configManager = new ConfigManager(this);
-        configManager.loadConfig();
-        lang = new Lang(this);
-        trustListManager = new TrustListManager(this);
-        serverPinger = new ServerPinger(this);
-        portalManager = new PortalManager(this);
-        doorBindManager = new DoorBindManager(this);
-        consentCache = new ConsentCache();
+	@Override
+	public void onEnable() {
+		instance = this;
+		configManager = new ConfigManager(this);
+		configManager.loadConfig();
+		lang = new Lang(this);
+		trustListManager = new TrustListManager(this);
+		serverPinger = new ServerPinger(this);
+		portalManager = new PortalManager(this);
+		doorBindManager = new DoorBindManager(this);
+		consentCache = new ConsentCache();
 
-        if (!Bukkit.isAcceptingTransfers()) {
-            if (configManager.isRequireAcceptTransfers()) {
-                getLogger().warning("Please set `accepts-transfers=true` in server.properties file");
-                Bukkit.getPluginManager().disablePlugin(this);
-                return;
-            }
-            getLogger().warning("The disabled accept-transfers in server.properties may cause errors when connecting to this server. Ignore this log if you are on a proxy server.");
-        }
+		if (!Bukkit.isAcceptingTransfers()) {
+			if (configManager.isRequireAcceptTransfers()) {
+				getLogger().warning("Please set `accepts-transfers=true` in server.properties file");
+				Bukkit.getPluginManager().disablePlugin(this);
+				return;
+			}
+			getLogger().warning("The disabled accept-transfers in server.properties may cause errors when connecting to this server. Ignore this log if you are on a proxy server.");
+		}
 
-        var portalCommandInstance = getCommand("portal");
-        if (portalCommandInstance == null) {
-            getLogger().warning("Enable `/portal` command with plugin.yml");
-            Bukkit.getPluginManager().disablePlugin(this);
-            return;
-        }
-        PortalCommand portalCommand = new PortalCommand(this);
-        portalCommandInstance.setExecutor(portalCommand);
-        portalCommandInstance.setTabCompleter(portalCommand);
+		var portalCommandInstance = getCommand("portal");
+		if (portalCommandInstance == null) {
+			getLogger().warning("Enable `/portal` command with plugin.yml");
+			Bukkit.getPluginManager().disablePlugin(this);
+			return;
+		}
+		PortalCommand portalCommand = new PortalCommand(this);
+		portalCommandInstance.setExecutor(portalCommand);
+		portalCommandInstance.setTabCompleter(portalCommand);
 
-        PluginManager pluginManager = Bukkit.getPluginManager();
-        pluginManager.registerEvents(new PortalListener(this), this);
-        pluginManager.registerEvents(new BindListener(this), this);
+		PluginManager pluginManager = Bukkit.getPluginManager();
+		pluginManager.registerEvents(new PortalListener(this), this);
+		pluginManager.registerEvents(new BindListener(this), this);
 
-        enableFlagInjection();
+		enableFlagInjection();
 
-        UpdateChecker.init(this);
-        new Metrics(this, 31401);
+		UpdateChecker.init(this);
+		new Metrics(this, 31401);
 
-        getLogger().info("PortalBridge enabled");
-    }
+		getLogger().info("PortalBridge enabled");
+	}
 
-    private void enableFlagInjection() {
-        try {
-            flagManager = IServerStatusPacketModifierManager.create();
-            flagManager.enable();
-            flagManager.registerModifier(this, new PortalBridgeFlagModifier());
-            if (configManager.isDebug()) {
-                getLogger().info("Flag injection successfully enabled - server status packet will contain portalbridge_flags field");
-            }
-        } catch (Throwable throwable) {
-            getLogger().warning("Failed to enable flag injection via packet modifier: " + throwable.getMessage());
-            getLogger().warning("Falling back to legacy flag injection via MOTD (invisible characters)");
-            try {
-                FlagInjectorLegacy legacyInjector = new FlagInjectorLegacy();
-                Bukkit.getPluginManager().registerEvents(legacyInjector, this);
-                flagInjectionFallbackEnabled = true;
-                if (configManager.isDebug()) {
-                    getLogger().info("Legacy flag injection via MOTD enabled successfully");
-                }
-            } catch (Exception exception) {
-                getLogger().warning("Legacy flag injection also failed: " + exception.getMessage());
-                if (configManager.isDebug()) {
-                    exception.printStackTrace();
-                }
-            }
-            flagManager = null;
-        }
-    }
+	private void enableFlagInjection() {
+		try {
+			flagManager = IServerStatusPacketModifierManager.create();
+			flagManager.enable();
+			flagManager.registerModifier(this, new PortalBridgeFlagModifier());
+			if (configManager.isDebug()) {
+				getLogger().info("Flag injection successfully enabled - server status packet will contain portalbridge_flags field");
+			}
+		} catch (Throwable throwable) {
+			getLogger().warning("Failed to enable flag injection via packet modifier: " + throwable.getMessage());
+			getLogger().warning("Falling back to legacy flag injection via MOTD (invisible characters)");
+			try {
+				FlagInjectorLegacy legacyInjector = new FlagInjectorLegacy();
+				Bukkit.getPluginManager().registerEvents(legacyInjector, this);
+				flagInjectionFallbackEnabled = true;
+				if (configManager.isDebug()) {
+					getLogger().info("Legacy flag injection via MOTD enabled successfully");
+				}
+			} catch (Exception exception) {
+				getLogger().warning("Legacy flag injection also failed: " + exception.getMessage());
+				if (configManager.isDebug()) {
+					exception.printStackTrace();
+				}
+			}
+			flagManager = null;
+		}
+	}
 
-    @Override
-    public void onDisable() {
-        if (portalManager != null) portalManager.removeAllPortals();
-        if (flagManager != null && flagManager.isEnabled()) {
-            try {
-                flagManager.unregisterModifiersByPlugin(this);
-                flagManager.disable();
-            } catch (Throwable throwable) {
-                if (configManager.isDebug()) {
-                    getLogger().warning("Failed to disable flag injection: " + throwable.getMessage());
-                }
-            }
-        }
-        getLogger().info("PortalBridge disabled");
-    }
+	@Override
+	public void onDisable() {
+		if (portalManager != null) portalManager.removeAllPortals();
+		if (flagManager != null && flagManager.isEnabled()) {
+			try {
+				flagManager.unregisterModifiersByPlugin(this);
+				flagManager.disable();
+			} catch (Throwable throwable) {
+				if (configManager.isDebug()) {
+					getLogger().warning("Failed to disable flag injection: " + throwable.getMessage());
+				}
+			}
+		}
+		getLogger().info("PortalBridge disabled");
+	}
 }

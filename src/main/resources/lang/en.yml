@@ -7,7 +7,7 @@ messages:
   must-look-at-block: "<red>You must look at a solid block to place a portal."
   hub-returning: "<green>↩ Returning to hub..."
   portal-create-untrusted: "<red>Cannot create portal: target server is not trusted."
-  untrusted-warning: "<red>⚠ Important: this server is not affiliated with us. Be careful when entering passwords on third-party servers\n<click:run_command:<command>><yellow>[Click here to proceed]</yellow></click>"
+  untrusted-warning: "<red>⚠ Important: this server is not affiliated with us. Be careful when entering passwords on third-party servers\n<click:run_command:'<command>'><yellow>[Click here to proceed]</yellow></click>"
   server-blacklisted: "<red>Cannot create portal: server is blacklisted."
   server-not-accepting-transfers: "<red>Server does not accept transfers. Contact an administrator."
   server-not-exist: "<red>Server does not exist or is unreachable."

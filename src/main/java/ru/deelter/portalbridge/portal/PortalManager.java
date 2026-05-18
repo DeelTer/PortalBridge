@@ -13,7 +13,6 @@ import org.bukkit.entity.*;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.joml.Vector3f;
-import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.config.ConfigManager;
 import ru.deelter.portalbridge.pinger.ServerInfo;
@@ -93,7 +92,30 @@ public class PortalManager {
 
 	private void updateHologram(Portal portal, ServerInfo info, String ownerName) {
 		ConfigManager cfg = plugin.getConfigManager();
-		PortalDisplayUpdater.update(portal, info, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), ownerName);
+		int totalLifetime = cfg.getPortalLifetimeSeconds();
+		long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
+		if (remaining < 0) remaining = 0;
+		PortalDisplayUpdater.update(portal, info, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), ownerName, (int) remaining, totalLifetime);
+	}
+
+	private void startHologramUpdater(Portal portal, int lifetimeSeconds, String ownerName) {
+		int taskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+			if (portal.isExpired() || portal.getHologram() == null || !portal.getHologram().isValid()) {
+				cancelTask(portal.getUpdaterTaskId());
+				portal.setUpdaterTaskId(-1);
+				return;
+			}
+			long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
+			if (remaining < 0) remaining = 0;
+			ServerInfo currentInfo = portal.getCachedInfo();
+			PortalDisplayUpdater.update(portal, currentInfo,
+					plugin.getConfigManager().getHologramFormat(),
+					plugin.getConfigManager().getHologramFormatUnreached(),
+					ownerName,
+					(int) remaining,
+					lifetimeSeconds);
+		}, 0L, 20L).getTaskId();
+		portal.setUpdaterTaskId(taskId);
 	}
 
 	private void spawnPortalEntities(Portal portal, Player player, Location targetLoc, int lifetimeSec, Material doorMaterial) {
@@ -112,27 +134,29 @@ public class PortalManager {
 
 		Location interactionLoc = targetLoc.clone().add(0.5, 1.0, 0.5);
 		Interaction interaction = interactionLoc.getWorld().spawn(interactionLoc, Interaction.class);
+		interaction.setPersistent(false);
 		interaction.setInteractionWidth(cfg.getInteractionWidth());
 		interaction.setInteractionHeight(cfg.getInteractionHeight());
 		interaction.setResponsive(true);
-		interaction.setPersistent(false);
 		portalsByEntityId.put(interaction.getUniqueId(), portal);
 		portal.setInteraction(interaction);
 
-		TextDisplay hologram = targetLoc.getWorld().spawn(
-				targetLoc.clone().add(0.5, cfg.getHologramHeight(), 0.5), TextDisplay.class);
+		TextDisplay hologram = targetLoc.getWorld().spawn(targetLoc.clone().add(0.5, cfg.getHologramHeight(), 0.5), TextDisplay.class);
+		hologram.setPersistent(false);
 		hologram.setDefaultBackground(false);
 		hologram.setBillboard(Display.Billboard.CENTER);
 		hologram.setSeeThrough(cfg.isHologramSeeThrough());
 		hologram.setShadowed(cfg.isHologramShadowed());
-		hologram.setPersistent(false);
 		portal.setHologram(hologram);
 
-		PortalDisplayUpdater.update(portal, null, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), player.getName());
+		PortalDisplayUpdater.update(portal, null, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(),
+				player.getName(), lifetimeSec, lifetimeSec);
 
 		playerPortalCount.merge(player.getUniqueId(), 1, Integer::sum);
 		portal.setTaskId(Bukkit.getScheduler().runTaskLater(plugin,
 				() -> removePortalAnimated(targetLoc), lifetimeSec * 20L).getTaskId());
+
+		startHologramUpdater(portal, lifetimeSec, player.getName());
 	}
 
 	private BlockDisplay spawnDoorDisplay(Location loc, Material material, BlockFace facing,
@@ -144,10 +168,10 @@ public class PortalManager {
 		data.setOpen(false);
 
 		BlockDisplay display = loc.getWorld().spawn(loc, BlockDisplay.class);
+		display.setPersistent(false);
 		display.setBlock(data);
 		display.setBrightness(new Display.Brightness(15, 15));
 		display.setTransformation(transform);
-		display.setPersistent(false);
 		portalsByEntityId.put(display.getUniqueId(), portal);
 		return display;
 	}
@@ -160,6 +184,8 @@ public class PortalManager {
 		portal.setAnimTaskId(-1);
 		cancelTask(portal.getCheckTaskId());
 		portal.setCheckTaskId(-1);
+		cancelTask(portal.getUpdaterTaskId());
+		portal.setUpdaterTaskId(-1);
 		if (portal.getInteraction() != null) {
 			portal.getInteraction().remove();
 			portal.setInteraction(null);
@@ -179,9 +205,9 @@ public class PortalManager {
 			tick[0]++;
 			float scale = Math.max(0.001f, 1f - Math.min(1f, (float) tick[0] / duration));
 
-			if (lower != null && lower.isValid() && lowerStart != null) applyShrink(lower, lowerStart, scale, true);
-			if (upper != null && upper.isValid() && upperStart != null) applyShrink(upper, upperStart, scale, true);
-			if (hologram != null && hologram.isValid() && hgStart != null) applyShrink(hologram, hgStart, scale, false);
+			if (lower != null && lower.isValid()) applyShrink(lower, lowerStart, scale, true);
+			if (upper != null && upper.isValid()) applyShrink(upper, upperStart, scale, true);
+			if (hologram != null && hologram.isValid()) applyShrink(hologram, hgStart, scale, false);
 
 			if (tick[0] >= duration) {
 				int taskId = portal.getAnimTaskId();
@@ -194,14 +220,14 @@ public class PortalManager {
 	}
 
 	private void applyShrink(Display display, Transformation base, float scale, boolean centerBlock) {
-		Vector3f t = new Vector3f(base.getTranslation());
+		Vector3f translation = new Vector3f(base.getTranslation());
 		if (centerBlock) {
-			float off = (1f - scale) * 0.5f;
-			t.add(off, off, off);
+			float offset = (1f - scale) * 0.5f;
+			translation.add(offset, offset, offset);
 		}
 		display.setInterpolationDelay(0);
 		display.setInterpolationDuration(1);
-		display.setTransformation(new Transformation(t, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation()));
+		display.setTransformation(new Transformation(translation, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation()));
 	}
 
 	public void removePortal(Location lowerLoc) {
@@ -216,6 +242,7 @@ public class PortalManager {
 		cancelTask(portal.getTaskId());
 		cancelTask(portal.getAnimTaskId());
 		cancelTask(portal.getCheckTaskId());
+		cancelTask(portal.getUpdaterTaskId());
 	}
 
 	public void removeAllPortals() {

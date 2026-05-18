@@ -1,4 +1,3 @@
-// PortalManager.java – полный класс
 package ru.deelter.portalbridge.portal;
 
 import lombok.RequiredArgsConstructor;
@@ -38,8 +37,8 @@ public class PortalManager {
 
     public PlaceResult canPlace(Player player, Location targetBlock) {
         ConfigManager cfg = plugin.getConfigManager();
-        int max = cfg.getMaxPortalsPerPlayer();
-        if (playerPortalCount.getOrDefault(player.getUniqueId(), 0) >= max)
+
+        if (playerPortalCount.getOrDefault(player.getUniqueId(), 0) >= cfg.getMaxPortalsPerPlayer())
             return PlaceResult.MAX_PORTALS;
 
         for (Location loc : portalsByLowerLocation.keySet())
@@ -51,14 +50,6 @@ public class PortalManager {
         if (nearPlayer) return PlaceResult.TOO_CLOSE_PLAYER;
 
         return PlaceResult.OK;
-    }
-
-    public String createPortal(Player player, String targetHost, int targetPort, int lifetimeSec) {
-        return createPortal(player, targetHost, targetPort, lifetimeSec, null, null);
-    }
-
-    public String createPortal(Player player, String targetHost, int targetPort, int lifetimeSec, Material doorMaterial) {
-        return createPortal(player, targetHost, targetPort, lifetimeSec, doorMaterial, null);
     }
 
     public String createPortal(Player player, String targetHost, int targetPort, int lifetimeSec, Material doorMaterial, ServerInfo preCachedInfo) {
@@ -73,84 +64,46 @@ public class PortalManager {
         PlaceResult result = canPlace(player, targetLoc);
         if (result == PlaceResult.TOO_CLOSE_PORTAL) return "cannot-place-near-portal";
         if (result == PlaceResult.TOO_CLOSE_PLAYER) return "cannot-place-near-player";
-        if (result == PlaceResult.MAX_PORTALS) return "max-portals-reached";
+        if (result == PlaceResult.MAX_PORTALS)      return "max-portals-reached";
 
         long expiry = System.currentTimeMillis() + lifetimeSec * 1000L;
         Portal portal = new Portal(targetLoc, targetHost, targetPort, expiry, player.getUniqueId(), player.getName());
         portalsByLowerLocation.put(targetLoc, portal);
 
-        spawnPortalEntities(portal, player, targetLoc, targetHost, targetPort, lifetimeSec, doorMaterial);
+        spawnPortalEntities(portal, player, targetLoc, lifetimeSec, doorMaterial);
 
         cfg.getPlaceSound().play(targetLoc.clone().add(0.5, 1.5, 0.5));
         cfg.getPlaceParticles().spawn(targetLoc.clone().add(0.5, 1.5, 0.5));
 
         if (preCachedInfo != null) {
             portal.setCachedInfo(preCachedInfo);
-            Bukkit.getScheduler().runTask(plugin, () ->
-                PortalDisplayUpdater.update(
-                    portal,
-                    preCachedInfo,
-                    cfg.getHologramFormat(),
-                    cfg.getHologramFormatUnreached(),
-                    player.getName()
-                )
-            );
+            Bukkit.getScheduler().runTask(plugin, () -> updateHologram(portal, preCachedInfo, player.getName()));
         } else {
             plugin.getServerPinger().ping(targetHost, targetPort).thenAccept(info -> {
                 portal.setCachedInfo(info);
-                Bukkit.getScheduler().runTask(plugin, () ->
-                    PortalDisplayUpdater.update(
-                        portal,
-                        info,
-                        cfg.getHologramFormat(),
-                        cfg.getHologramFormatUnreached(),
-                        player.getName()
-                    )
-                );
+                Bukkit.getScheduler().runTask(plugin, () -> updateHologram(portal, info, player.getName()));
             });
         }
 
         return null;
     }
 
-    private void spawnPortalEntities(Portal portal, Player player, Location targetLoc,
-                                     String targetHost, int targetPort, int lifetimeSec, Material doorMaterial) {
+    private void updateHologram(Portal portal, ServerInfo info, String ownerName) {
+        ConfigManager cfg = plugin.getConfigManager();
+        PortalDisplayUpdater.update(portal, info, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), ownerName);
+    }
+
+    private void spawnPortalEntities(Portal portal, Player player, Location targetLoc, int lifetimeSec, Material doorMaterial) {
         ConfigManager cfg = plugin.getConfigManager();
         Material material = doorMaterial != null ? doorMaterial : cfg.getDoorMaterial();
-
-        Location lowerLoc = targetLoc.clone().add(0, 1, 0);
-        Location upperLoc = targetLoc.clone().add(0, 2, 0);
-
-        BlockDisplay lower = lowerLoc.getWorld().spawn(lowerLoc, BlockDisplay.class);
-        BlockDisplay upper = upperLoc.getWorld().spawn(upperLoc, BlockDisplay.class);
 
         BlockFace facing = player.getFacing();
         Door.Hinge hinge = pickHinge(player, targetLoc, facing);
         boolean leftHinge = hinge == Door.Hinge.LEFT;
-
-        Door lowerData = (Door) Bukkit.createBlockData(material);
-        lowerData.setHalf(Bisected.Half.BOTTOM);
-        lowerData.setFacing(facing);
-        lowerData.setHinge(hinge);
-        lowerData.setOpen(false);
-
-        Door upperData = (Door) Bukkit.createBlockData(material);
-        upperData.setHalf(Bisected.Half.TOP);
-        upperData.setFacing(facing);
-        upperData.setHinge(hinge);
-        upperData.setOpen(false);
-
-        lower.setBlock(lowerData);
-        upper.setBlock(upperData);
-
         Transformation closedTrans = DoorAnimator.buildTransform(facing, leftHinge, false);
-        for (BlockDisplay d : new BlockDisplay[]{lower, upper}) {
-            d.setBrightness(new Display.Brightness(15, 15));
-            d.setTransformation(closedTrans);
-            d.setPersistent(false);
-            portalsByEntityId.put(d.getUniqueId(), portal);
-        }
 
+        BlockDisplay lower = spawnDoorDisplay(targetLoc.clone().add(0, 1, 0), material, facing, hinge, Bisected.Half.BOTTOM, closedTrans, portal);
+        BlockDisplay upper = spawnDoorDisplay(targetLoc.clone().add(0, 2, 0), material, facing, hinge, Bisected.Half.TOP,    closedTrans, portal);
         portal.setLowerDisplay(lower);
         portal.setUpperDisplay(upper);
 
@@ -175,79 +128,86 @@ public class PortalManager {
         PortalDisplayUpdater.update(portal, null, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), player.getName());
 
         playerPortalCount.merge(player.getUniqueId(), 1, Integer::sum);
+        portal.setTaskId(Bukkit.getScheduler().runTaskLater(plugin,
+                () -> removePortalAnimated(targetLoc), lifetimeSec * 20L).getTaskId());
+    }
 
-        int taskId = Bukkit.getScheduler().runTaskLater(plugin,
-                () -> removePortalAnimated(targetLoc), lifetimeSec * 20L).getTaskId();
-        portal.setTaskId(taskId);
+    private BlockDisplay spawnDoorDisplay(Location loc, Material material, BlockFace facing,
+                                          Door.Hinge hinge, Bisected.Half half, Transformation transform, Portal portal) {
+        Door data = (Door) Bukkit.createBlockData(material);
+        data.setHalf(half);
+        data.setFacing(facing);
+        data.setHinge(hinge);
+        data.setOpen(false);
+
+        BlockDisplay display = loc.getWorld().spawn(loc, BlockDisplay.class);
+        display.setBlock(data);
+        display.setBrightness(new Display.Brightness(15, 15));
+        display.setTransformation(transform);
+        display.setPersistent(false);
+        portalsByEntityId.put(display.getUniqueId(), portal);
+        return display;
     }
 
     public void removePortalAnimated(Location lowerLoc) {
         Portal portal = portalsByLowerLocation.get(lowerLoc);
         if (portal == null) return;
 
-        if (portal.getAnimTaskId() != -1) { Bukkit.getScheduler().cancelTask(portal.getAnimTaskId()); portal.setAnimTaskId(-1); }
-        if (portal.getCheckTaskId() != -1) { Bukkit.getScheduler().cancelTask(portal.getCheckTaskId()); portal.setCheckTaskId(-1); }
+        cancelTask(portal.getAnimTaskId());  portal.setAnimTaskId(-1);
+        cancelTask(portal.getCheckTaskId()); portal.setCheckTaskId(-1);
         if (portal.getInteraction() != null) { portal.getInteraction().remove(); portal.setInteraction(null); }
 
-        final BlockDisplay lower = portal.getLowerDisplay();
-        final BlockDisplay upper = portal.getUpperDisplay();
+        final BlockDisplay lower   = portal.getLowerDisplay();
+        final BlockDisplay upper   = portal.getUpperDisplay();
         final TextDisplay hologram = portal.getHologram();
 
-        final Transformation lowerStart = lower != null ? lower.getTransformation() : null;
-        final Transformation upperStart = upper != null ? upper.getTransformation() : null;
-        final Transformation hgStart    = hologram != null ? hologram.getTransformation() : null;
+        final Transformation lowerStart = lower   != null ? lower.getTransformation()   : null;
+        final Transformation upperStart = upper   != null ? upper.getTransformation()   : null;
+        final Transformation hgStart   = hologram != null ? hologram.getTransformation() : null;
 
         final int duration = plugin.getConfigManager().getShrinkTicks();
         final int[] tick = {0};
         int id = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             tick[0]++;
-            float frac = Math.min(1f, (float) tick[0] / duration);
-            float scale = Math.max(0.001f, 1f - frac);
+            float scale = Math.max(0.001f, 1f - Math.min(1f, (float) tick[0] / duration));
 
-            if (lower != null && lower.isValid()) {
-                applyShrink(lower, lowerStart, scale, true);
-            }
-            if (upper != null && upper.isValid()) {
-                applyShrink(upper, upperStart, scale, true);
-            }
-            if (hologram != null && hologram.isValid()) {
-                applyShrink(hologram, hgStart, scale, false);
-            }
+            if (lower   != null && lower.isValid()   && lowerStart != null) applyShrink(lower,   lowerStart, scale, true);
+            if (upper   != null && upper.isValid()   && upperStart != null) applyShrink(upper,   upperStart, scale, true);
+            if (hologram != null && hologram.isValid() && hgStart  != null) applyShrink(hologram, hgStart,   scale, false);
 
             if (tick[0] >= duration) {
                 int taskId = portal.getAnimTaskId();
                 portal.setAnimTaskId(-1);
-                if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
+                cancelTask(taskId);
                 removePortal(lowerLoc);
             }
         }, 1L, 1L).getTaskId();
         portal.setAnimTaskId(id);
     }
 
-    private void applyShrink(Display d, Transformation base, float scale, boolean centerBlock) {
+    private void applyShrink(Display display, Transformation base, float scale, boolean centerBlock) {
         Vector3f t = new Vector3f(base.getTranslation());
         if (centerBlock) {
             float off = (1f - scale) * 0.5f;
             t.add(off, off, off);
         }
-        Transformation nt = new Transformation(t, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation());
-        d.setInterpolationDelay(0);
-        d.setInterpolationDuration(1);
-        d.setTransformation(nt);
+        display.setInterpolationDelay(0);
+        display.setInterpolationDuration(1);
+        display.setTransformation(new Transformation(t, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation()));
     }
 
     public void removePortal(Location lowerLoc) {
-        Portal p = portalsByLowerLocation.remove(lowerLoc);
-        if (p == null) return;
-        if (p.getLowerDisplay()  != null) p.getLowerDisplay().remove();
-        if (p.getUpperDisplay()  != null) p.getUpperDisplay().remove();
-        if (p.getInteraction()   != null) p.getInteraction().remove();
-        if (p.getHologram()      != null) p.getHologram().remove();
-        portalsByEntityId.values().removeIf(portal -> portal == p);
-        playerPortalCount.computeIfPresent(p.getOwner(), (uuid, count) -> count <= 1 ? null : count - 1);
-        if (p.getTaskId()      != -1) Bukkit.getScheduler().cancelTask(p.getTaskId());
-        if (p.getAnimTaskId()  != -1) Bukkit.getScheduler().cancelTask(p.getAnimTaskId());
-        if (p.getCheckTaskId() != -1) Bukkit.getScheduler().cancelTask(p.getCheckTaskId());
+        Portal portal = portalsByLowerLocation.remove(lowerLoc);
+        if (portal == null) return;
+        if (portal.getLowerDisplay() != null) portal.getLowerDisplay().remove();
+        if (portal.getUpperDisplay() != null) portal.getUpperDisplay().remove();
+        if (portal.getInteraction()  != null) portal.getInteraction().remove();
+        if (portal.getHologram()     != null) portal.getHologram().remove();
+        portalsByEntityId.values().removeIf(p -> p == portal);
+        playerPortalCount.computeIfPresent(portal.getOwner(), (uuid, count) -> count <= 1 ? null : count - 1);
+        cancelTask(portal.getTaskId());
+        cancelTask(portal.getAnimTaskId());
+        cancelTask(portal.getCheckTaskId());
     }
 
     public void removeAllPortals() {
@@ -265,9 +225,12 @@ public class PortalManager {
         return portalsByLowerLocation.get(location);
     }
 
+    private void cancelTask(int taskId) {
+        if (taskId != -1) Bukkit.getScheduler().cancelTask(taskId);
+    }
+
     private Door.Hinge pickHinge(Player player, Location targetBlock, BlockFace facing) {
-        double range = plugin.getConfigManager().getMaxPlacementDistance();
-        RayTraceResult hit = player.rayTraceBlocks(range);
+        RayTraceResult hit = player.rayTraceBlocks(plugin.getConfigManager().getMaxPlacementDistance());
         if (hit == null) return Door.Hinge.LEFT;
 
         org.bukkit.util.Vector pos = hit.getHitPosition();

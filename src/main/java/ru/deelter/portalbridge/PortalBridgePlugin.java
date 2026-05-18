@@ -21,8 +21,9 @@ import ru.deelter.portalbridge.utils.TrustListManager;
 @Getter
 public class PortalBridgePlugin extends JavaPlugin {
 
-	@Getter
 	private static PortalBridgePlugin instance;
+
+	public static PortalBridgePlugin getInstance() { return instance; }
 
 	private ConsentCache consentCache;
 	private ConfigManager configManager;

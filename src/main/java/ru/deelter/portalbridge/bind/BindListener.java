@@ -1,9 +1,7 @@
-// BindListener.java – полный класс
 package ru.deelter.portalbridge.bind;
 
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -42,26 +40,13 @@ public class BindListener implements Listener {
     }
 
     private void tryOpen(Player player, @NonNull BindData data, ServerInfo info) {
-        var trust = plugin.getTrustListManager();
-
-        if (trust.isBlacklisted(data.host(), data.port())) {
+        if (plugin.getTrustListManager().isBlacklisted(data.host(), data.port())) {
             player.sendMessage(plugin.getLang().getMessage("server-blacklisted", player));
             return;
         }
 
-        if (info == ServerInfo.UNREACHABLE || info == ServerInfo.EMPTY) {
-            int lifetime = plugin.getConfigManager().getPortalLifetimeSeconds();
-            String error = plugin.getPortalManager().createPortal(player, data.host(), data.port(), lifetime, data.material(), info);
-            if (error != null) {
-                player.sendMessage(plugin.getLang().getMessage(error, player));
-                return;
-            }
-            String address = data.port() == 25565 ? data.host() : data.host() + ":" + data.port();
-            player.sendMessage(plugin.getLang().getMessage("portal-created-unreachable", player, "target", address));
-            return;
-        }
-
-        if (!trust.isAllowed(info, data.host(), data.port())) {
+        boolean unreachable = info == null || info == ServerInfo.UNREACHABLE || info == ServerInfo.EMPTY;
+        if (!unreachable && !plugin.getTrustListManager().isAllowed(info, data.host(), data.port())) {
             player.sendMessage(plugin.getLang().getMessage("portal-create-untrusted", player));
             return;
         }
@@ -74,6 +59,7 @@ public class BindListener implements Listener {
         }
 
         String address = data.port() == 25565 ? data.host() : data.host() + ":" + data.port();
-        player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
+        String msgKey = unreachable ? "portal-created-unreachable" : "portal-created";
+        player.sendMessage(plugin.getLang().getMessage(msgKey, player, "target", address));
     }
 }

@@ -1,55 +1,36 @@
-// PortalDisplayUpdater.java – полный класс с поддержкой unreachable
 package ru.deelter.portalbridge.portal;
 
-import lombok.NoArgsConstructor;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import ru.deelter.portalbridge.pinger.ServerInfo;
 
-@NoArgsConstructor
 public final class PortalDisplayUpdater {
 
-	public static void update(Portal portal, ServerInfo info, String reachableFormat, String unreachableFormat, String ownerName) {
-		if (portal.isExpired() || portal.getHologram() == null || !portal.getHologram().isValid()) return;
+    private static final MiniMessage MM = MiniMessage.miniMessage();
 
-		String host = portal.getTargetHost();
-		int port = portal.getTargetPort();
-		String address = port == 25565 ? host : host + ":" + port;
+    private PortalDisplayUpdater() {}
 
-		boolean reachable = info != null && info != ServerInfo.UNREACHABLE && !info.isUnreachable() && info != ServerInfo.EMPTY;
-		String format = reachable ? reachableFormat : unreachableFormat;
+    public static void update(Portal portal, ServerInfo info, String reachableFormat, String unreachableFormat, String ownerName) {
+        if (portal.isExpired() || portal.getHologram() == null || !portal.getHologram().isValid()) return;
 
-		String motdValue;
-		String onlineValue;
-		String maxValue;
-		String versionValue;
+        String host = portal.getTargetHost();
+        int port = portal.getTargetPort();
+        String address = port == 25565 ? host : host + ":" + port;
 
-		if (reachable && info.getMotd() != null && !info.getMotd().isEmpty()) {
-			motdValue = info.getMotd();
-			onlineValue = String.valueOf(info.getOnline());
-			maxValue = String.valueOf(info.getMax());
-			versionValue = info.getVersion() != null ? info.getVersion() : "?";
-		} else {
-			motdValue = "?";
-			onlineValue = "?";
-			maxValue = "?";
-			versionValue = "?";
-		}
+        boolean reachable = info != null && !info.isUnreachable() && info != ServerInfo.EMPTY;
 
-		TagResolver resolver = TagResolver.resolver(
-				Placeholder.unparsed("motd", motdValue),
-				Placeholder.unparsed("online", onlineValue),
-				Placeholder.unparsed("max", maxValue),
-				Placeholder.unparsed("version", versionValue),
-				Placeholder.unparsed("player", ownerName),
-				Placeholder.unparsed("address", address),
-				Placeholder.unparsed("host", host),
-				Placeholder.unparsed("port", String.valueOf(port))
-		);
+        TagResolver resolver = TagResolver.resolver(
+                Placeholder.unparsed("motd",    reachable && info.getMotd()    != null ? info.getMotd()    : "?"),
+                Placeholder.unparsed("online",  reachable ? String.valueOf(info.getOnline())               : "?"),
+                Placeholder.unparsed("max",     reachable ? String.valueOf(info.getMax())                  : "?"),
+                Placeholder.unparsed("version", reachable && info.getVersion() != null ? info.getVersion() : "?"),
+                Placeholder.unparsed("player",  ownerName),
+                Placeholder.unparsed("address", address),
+                Placeholder.unparsed("host",    host),
+                Placeholder.unparsed("port",    String.valueOf(port))
+        );
 
-		Component text = MiniMessage.miniMessage().deserialize(format, resolver);
-		portal.getHologram().text(text);
-	}
+        portal.getHologram().text(MM.deserialize(reachable ? reachableFormat : unreachableFormat, resolver));
+    }
 }

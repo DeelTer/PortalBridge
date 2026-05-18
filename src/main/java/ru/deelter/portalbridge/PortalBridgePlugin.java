@@ -48,7 +48,7 @@ public class PortalBridgePlugin extends JavaPlugin {
 		serverPinger = new ServerPinger(this);
 		portalManager = new PortalManager(this);
 		doorBindManager = new DoorBindManager(this);
-		consentCache = new ConsentCache();
+		consentCache = new ConsentCache(configManager);
 
 		if (!Bukkit.isAcceptingTransfers()) {
 			if (configManager.isRequireAcceptTransfers()) {

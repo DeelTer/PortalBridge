@@ -31,6 +31,12 @@ portal:
     open-ticks: 5
     shrink-ticks: 6
 
+  # Ticks before an opened portal auto-closes after a player enters (20 ticks = 1 second)
+  auto-close-ticks: 100
+
+  # Radius (blocks) for action-bar notifications when a player enters a portal
+  notify-radius: 12.0
+
   door:
     material: SPRUCE_DOOR
     interaction-width: 1.4
@@ -72,6 +78,16 @@ ping-timeout-millis: 5000
 
 # Radius to check for players near the portal
 portal-check-radius: 2.5
+
+# Command cooldown between /portal open usages (seconds)
+command-cooldown-seconds: 2
+
+# Consent cache settings
+consent:
+  # How long consent is remembered (seconds, default 1 hour)
+  ttl-seconds: 3600
+  # Cooldown between repeated untrusted-server warnings (seconds)
+  cooldown-seconds: 15
 
 updates:
   check-enabled: false

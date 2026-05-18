@@ -2,7 +2,6 @@ package ru.deelter.portalbridge.pinger;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import lombok.NoArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.flags.FlagCodec;
@@ -19,8 +18,9 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-@NoArgsConstructor
 public final class MinecraftPinger {
+
+	private MinecraftPinger() {}
 
 	public static @NonNull CompletableFuture<Set<ServerFlag>> fetchFlags(@NonNull String host, int port) {
 		int timeoutMillis = PortalBridgePlugin.getInstance().getConfigManager().getPingTimeoutMillis();

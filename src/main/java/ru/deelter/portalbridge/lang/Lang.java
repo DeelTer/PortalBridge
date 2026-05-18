@@ -72,6 +72,18 @@ public class Lang {
 		return getMessage(key, sender, Placeholder.unparsed(placeholder, value));
 	}
 
+	/**
+	 * Like getMessage, but substitutes placeholders directly in the raw string before MiniMessage parsing.
+	 * Use this when the placeholder appears inside a MiniMessage tag argument (e.g. click:run_command),
+	 * where Adventure's tag resolver does not resolve inner tags due to quoting.
+	 */
+	public Component getMessageRaw(String key, CommandSender sender, String placeholder, String value) {
+		String raw = getRaw(key, sender);
+		if (raw == null || raw.isEmpty()) return null;
+		raw = raw.replace("<" + placeholder + ">", value);
+		return miniMessage.deserialize(raw);
+	}
+
 	private String getRaw(String key, CommandSender sender) {
 		String lang = defaultLang;
 		if (autoDetect && sender instanceof Player p) {

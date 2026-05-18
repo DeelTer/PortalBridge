@@ -62,7 +62,7 @@ public final class PortalDisplayUpdater {
 				Placeholder.unparsed("host", targetHost),
 				Placeholder.unparsed("port", String.valueOf(targetPort)),
 				Placeholder.parsed("online_icon", onlineModeIcon),
-				Placeholder.unparsed("time", String.valueOf(secondsLeft)),
+				Placeholder.parsed("time", coloredTime),
 				Placeholder.parsed("colored_time", coloredTime)
 		);
 

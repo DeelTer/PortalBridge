@@ -168,11 +168,8 @@ public class PortalListener implements Listener {
 		}
 
 		if (!consentCache.isOnCooldown(playerUniqueId, targetHost, targetPort)) {
-			String forceCommand = "/portal force " + targetHost + " " + targetPort;
-			Component warningMessage = plugin.getLang().getMessage(
-					"untrusted-warning", player,
-					Placeholder.unparsed("command", forceCommand)
-			);
+			String forceCommand = "/portal force " + (targetPort == 25565 ? targetHost : targetHost + ":" + targetPort);
+			Component warningMessage = plugin.getLang().getMessageRaw("untrusted-warning", player, "command", forceCommand);
 			player.sendMessage(warningMessage);
 			consentCache.setCooldown(playerUniqueId, targetHost, targetPort);
 		}
@@ -188,7 +185,7 @@ public class PortalListener implements Listener {
 				Placeholder.unparsed("player", enteringPlayer.getName()),
 				Placeholder.unparsed("target", targetAddress));
 		if (notificationMessage == null) return;
-		for (Player nearbyPlayer : portal.getLowerDoorLoc().getNearbyPlayers(12)) {
+		for (Player nearbyPlayer : portal.getLowerDoorLoc().getNearbyPlayers(plugin.getConfigManager().getNotifyRadius())) {
 			nearbyPlayer.sendActionBar(notificationMessage);
 		}
 	}
@@ -205,7 +202,7 @@ public class PortalListener implements Listener {
 				portal.setOpen(false);
 				cancelCheckTask(portal);
 			}
-		}, 100L).getTaskId();
+		}, plugin.getConfigManager().getAutoCloseTicks()).getTaskId();
 		portal.setAutoCloseTaskId(autoCloseTaskId);
 	}
 

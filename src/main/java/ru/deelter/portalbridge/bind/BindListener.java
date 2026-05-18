@@ -1,7 +1,6 @@
 package ru.deelter.portalbridge.bind;
 
 import lombok.RequiredArgsConstructor;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,9 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.NonNull;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.bind.DoorBindManager.BindData;
-import ru.deelter.portalbridge.pinger.ServerInfo;
 import ru.deelter.portalbridge.portal.Portal;
-import ru.deelter.portalbridge.portal.PortalDisplayUpdater;
 
 @RequiredArgsConstructor
 public class BindListener implements Listener {
@@ -22,7 +19,7 @@ public class BindListener implements Listener {
 	private final PortalBridgePlugin plugin;
 
 	@EventHandler
-	public void onInteract(PlayerInteractEvent event) {
+	public void onInteract(@NonNull PlayerInteractEvent event) {
 		if (event.getHand() != EquipmentSlot.HAND) return;
 		Action action = event.getAction();
 		if (action != Action.RIGHT_CLICK_BLOCK && action != Action.RIGHT_CLICK_AIR) return;
@@ -37,30 +34,18 @@ public class BindListener implements Listener {
 		event.setCancelled(true);
 		Player player = event.getPlayer();
 
-		int lifetimeSeconds = plugin.getConfigManager().getPortalLifetimeSeconds();
-		Portal portal = plugin.getPortalManager().createPortal(player, bindData.host(), bindData.port(), lifetimeSeconds, bindData.material(), null);
-		if (portal == null) {
-			player.sendMessage(plugin.getLang().getMessage("portal-creation-failed", player));
+		if (plugin.getTrustListManager().isBlacklisted(bindData.host(), bindData.port())) {
+			player.sendMessage(plugin.getLang().getMessage("server-blacklisted", player));
 			return;
 		}
 
+		int lifetimeSec = plugin.getConfigManager().getPortalLifetimeSeconds();
+		Portal portal = plugin.getPortalManager().createPortal(
+				player, bindData.host(), bindData.port(), lifetimeSec, bindData.material(), null);
+		if (portal == null) return;
+
 		String address = bindData.port() == 25565 ? bindData.host() : bindData.host() + ":" + bindData.port();
 		player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));
-
-		plugin.getServerPinger().ping(bindData.host(), bindData.port()).thenAccept(serverInfo -> {
-			Bukkit.getScheduler().runTask(plugin, () -> updatePortalWithInfo(portal, serverInfo, player, lifetimeSeconds));
-		});
-	}
-
-	private void updatePortalWithInfo(@NonNull Portal portal, ServerInfo serverInfo, @NonNull Player player, int lifetimeSeconds) {
-		portal.setCachedInfo(serverInfo);
-		long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
-		if (remaining < 0) remaining = 0;
-		PortalDisplayUpdater.update(portal, serverInfo,
-				plugin.getConfigManager().getHologramFormat(),
-				plugin.getConfigManager().getHologramFormatUnreached(),
-				player.getName(),
-				(int) remaining,
-				lifetimeSeconds);
+		plugin.getPortalManager().startPingAndUpdateHologram(portal, lifetimeSec);
 	}
 }

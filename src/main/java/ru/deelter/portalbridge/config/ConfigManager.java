@@ -59,6 +59,12 @@ public class ConfigManager {
 	private int pingTimeoutMillis;
 	private double portalCheckRadius;
 
+	private int consentTtlSeconds;
+	private int consentCooldownSeconds;
+	private int commandCooldownSeconds;
+	private double notifyRadius;
+	private int autoCloseTicks;
+
 	public ConfigManager(JavaPlugin plugin) {
 		this.plugin = plugin;
 	}
@@ -71,6 +77,12 @@ public class ConfigManager {
 		debug = config.getBoolean("debug", false);
 		pingTimeoutMillis = config.getInt("ping-timeout-millis", 5000);
 		portalCheckRadius = config.getDouble("portal-check-radius", 2.5);
+
+		consentTtlSeconds = config.getInt("consent.ttl-seconds", 3600);
+		consentCooldownSeconds = config.getInt("consent.cooldown-seconds", 15);
+		commandCooldownSeconds = config.getInt("command-cooldown-seconds", 2);
+		notifyRadius = config.getDouble("portal.notify-radius", 12.0);
+		autoCloseTicks = config.getInt("portal.auto-close-ticks", 100);
 		timerGreenPercent = config.getInt("portal.timer.green-threshold", 50);
 		timerYellowPercent = config.getInt("portal.timer.yellow-threshold", 25);
 

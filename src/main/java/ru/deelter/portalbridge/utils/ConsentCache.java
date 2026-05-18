@@ -2,19 +2,24 @@ package ru.deelter.portalbridge.utils;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import ru.deelter.portalbridge.config.ConfigManager;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 public class ConsentCache {
 
-	private final Cache<String, Boolean> consentCache = Caffeine.newBuilder()
-			.expireAfterWrite(1, TimeUnit.HOURS)
-			.build();
+	private final Cache<String, Boolean> consentCache;
+	private final Cache<String, Boolean> cooldownCache;
 
-	private final Cache<String, Boolean> cooldownCache = Caffeine.newBuilder()
-			.expireAfterWrite(15, TimeUnit.SECONDS)
-			.build();
+	public ConsentCache(ConfigManager cfg) {
+		this.consentCache = Caffeine.newBuilder()
+				.expireAfterWrite(cfg.getConsentTtlSeconds(), TimeUnit.SECONDS)
+				.build();
+		this.cooldownCache = Caffeine.newBuilder()
+				.expireAfterWrite(cfg.getConsentCooldownSeconds(), TimeUnit.SECONDS)
+				.build();
+	}
 
 	private String buildKey(UUID playerId, String host, int port) {
 		return playerId + ":" + host + ":" + port;

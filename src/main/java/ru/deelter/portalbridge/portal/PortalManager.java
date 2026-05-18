@@ -9,7 +9,11 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.type.Door;
-import org.bukkit.entity.*;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.joml.Vector3f;
@@ -24,25 +28,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class PortalManager {
 
-	public enum PlaceResult {OK, NO_BLOCK, TOO_CLOSE_PORTAL, TOO_CLOSE_PLAYER, MAX_PORTALS}
+	public enum PlaceResult { OK, NO_BLOCK, TOO_CLOSE_PORTAL, TOO_CLOSE_PLAYER, MAX_PORTALS }
 
 	private final PortalBridgePlugin plugin;
 	private final Map<Location, Portal> portalsByLowerLocation = new ConcurrentHashMap<>();
 	private final Map<UUID, Portal> portalsByEntityId = new ConcurrentHashMap<>();
 	private final Map<UUID, Integer> playerPortalCount = new ConcurrentHashMap<>();
 
-	public PlaceResult canPlace(Player player, Location targetBlock) {
+	public PlaceResult canPlace(Player player, Location targetLoc) {
 		ConfigManager cfg = plugin.getConfigManager();
 
 		if (playerPortalCount.getOrDefault(player.getUniqueId(), 0) >= cfg.getMaxPortalsPerPlayer())
 			return PlaceResult.MAX_PORTALS;
 
+		double collisionRadiusSq = cfg.getCollisionRadius() * cfg.getCollisionRadius();
 		for (Location loc : portalsByLowerLocation.keySet())
-			if (loc.distance(targetBlock) < cfg.getCollisionRadius())
+			if (loc.distanceSquared(targetLoc) < collisionRadiusSq)
 				return PlaceResult.TOO_CLOSE_PORTAL;
 
-		boolean nearPlayer = targetBlock.getNearbyPlayers(cfg.getPlayerProximityRadius()).stream()
-				.anyMatch(p -> !p.equals(player));
+		boolean nearPlayer = targetLoc.getNearbyPlayers(cfg.getPlayerProximityRadius()).stream()
+				.anyMatch(nearbyPlayer -> !nearbyPlayer.equals(player));
 		if (nearPlayer) return PlaceResult.TOO_CLOSE_PLAYER;
 
 		return PlaceResult.OK;
@@ -60,18 +65,9 @@ public class PortalManager {
 		Location targetLoc = targetBlock.getLocation();
 
 		PlaceResult result = canPlace(player, targetLoc);
-		if (result == PlaceResult.TOO_CLOSE_PORTAL) {
-			player.sendMessage(plugin.getLang().getMessage("cannot-place-near-portal", player));
-			return null;
-		}
-		if (result == PlaceResult.TOO_CLOSE_PLAYER) {
-			player.sendMessage(plugin.getLang().getMessage("cannot-place-near-player", player));
-			return null;
-		}
-		if (result == PlaceResult.MAX_PORTALS) {
-			player.sendMessage(plugin.getLang().getMessage("max-portals-reached", player));
-			return null;
-		}
+		if (result == PlaceResult.TOO_CLOSE_PORTAL) { player.sendMessage(plugin.getLang().getMessage("cannot-place-near-portal", player)); return null; }
+		if (result == PlaceResult.TOO_CLOSE_PLAYER)  { player.sendMessage(plugin.getLang().getMessage("cannot-place-near-player", player));  return null; }
+		if (result == PlaceResult.MAX_PORTALS)        { player.sendMessage(plugin.getLang().getMessage("max-portals-reached", player));       return null; }
 
 		long expiry = System.currentTimeMillis() + lifetimeSec * 1000L;
 		Portal portal = new Portal(targetLoc, targetHost, targetPort, expiry, player.getUniqueId(), player.getName());
@@ -79,8 +75,9 @@ public class PortalManager {
 
 		spawnPortalEntities(portal, player, targetLoc, lifetimeSec, doorMaterial);
 
-		cfg.getPlaceSound().play(targetLoc.clone().add(0.5, 1.5, 0.5));
-		cfg.getPlaceParticles().spawn(targetLoc.clone().add(0.5, 1.5, 0.5));
+		Location effectLoc = targetLoc.clone().add(0.5, 1.5, 0.5);
+		cfg.getPlaceSound().play(effectLoc);
+		cfg.getPlaceParticles().spawn(effectLoc);
 
 		if (preCachedInfo != null) {
 			portal.setCachedInfo(preCachedInfo);
@@ -90,30 +87,31 @@ public class PortalManager {
 		return portal;
 	}
 
-	private void updateHologram(Portal portal, ServerInfo info, String ownerName) {
-		ConfigManager cfg = plugin.getConfigManager();
-		int totalLifetime = cfg.getPortalLifetimeSeconds();
-		long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
-		if (remaining < 0) remaining = 0;
-		PortalDisplayUpdater.update(portal, info, cfg.getHologramFormat(), cfg.getHologramFormatUnreached(), ownerName, (int) remaining, totalLifetime);
+	public void startPingAndUpdateHologram(Portal portal, int lifetimeSec) {
+		plugin.getServerPinger().ping(portal.getTargetHost(), portal.getTargetPort())
+				.thenAccept(info -> Bukkit.getScheduler().runTask(plugin, () -> {
+					portal.setCachedInfo(info);
+					updateHologram(portal, info, portal.getOwnerName());
+				}));
 	}
 
-	private void startHologramUpdater(Portal portal, int lifetimeSeconds, String ownerName) {
+	public void updateHologram(Portal portal, ServerInfo info, String ownerName) {
+		if (portal.isExpired()) return;
+		ConfigManager cfg = plugin.getConfigManager();
+		long remaining = Math.max(0, (portal.getExpiryTime() - System.currentTimeMillis()) / 1000);
+		PortalDisplayUpdater.update(portal, info,
+				cfg.getHologramFormat(), cfg.getHologramFormatUnreached(),
+				ownerName, (int) remaining, cfg.getPortalLifetimeSeconds());
+	}
+
+	private void startHologramUpdater(Portal portal, int lifetimeSeconds) {
 		int taskId = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
 			if (portal.isExpired() || portal.getHologram() == null || !portal.getHologram().isValid()) {
 				cancelTask(portal.getUpdaterTaskId());
 				portal.setUpdaterTaskId(-1);
 				return;
 			}
-			long remaining = (portal.getExpiryTime() - System.currentTimeMillis()) / 1000;
-			if (remaining < 0) remaining = 0;
-			ServerInfo currentInfo = portal.getCachedInfo();
-			PortalDisplayUpdater.update(portal, currentInfo,
-					plugin.getConfigManager().getHologramFormat(),
-					plugin.getConfigManager().getHologramFormatUnreached(),
-					ownerName,
-					(int) remaining,
-					lifetimeSeconds);
+			updateHologram(portal, portal.getCachedInfo(), portal.getOwnerName());
 		}, 0L, 20L).getTaskId();
 		portal.setUpdaterTaskId(taskId);
 	}
@@ -128,7 +126,7 @@ public class PortalManager {
 		Transformation closedTrans = DoorAnimator.buildTransform(facing, leftHinge, false);
 
 		BlockDisplay lower = spawnDoorDisplay(targetLoc.clone().add(0, 1, 0), material, facing, hinge, Bisected.Half.BOTTOM, closedTrans, portal);
-		BlockDisplay upper = spawnDoorDisplay(targetLoc.clone().add(0, 2, 0), material, facing, hinge, Bisected.Half.TOP, closedTrans, portal);
+		BlockDisplay upper = spawnDoorDisplay(targetLoc.clone().add(0, 2, 0), material, facing, hinge, Bisected.Half.TOP,    closedTrans, portal);
 		portal.setLowerDisplay(lower);
 		portal.setUpperDisplay(upper);
 
@@ -156,7 +154,7 @@ public class PortalManager {
 		portal.setTaskId(Bukkit.getScheduler().runTaskLater(plugin,
 				() -> removePortalAnimated(targetLoc), lifetimeSec * 20L).getTaskId());
 
-		startHologramUpdater(portal, lifetimeSec, player.getName());
+		startHologramUpdater(portal, lifetimeSec);
 	}
 
 	private BlockDisplay spawnDoorDisplay(Location loc, Material material, BlockFace facing,
@@ -180,24 +178,17 @@ public class PortalManager {
 		Portal portal = portalsByLowerLocation.get(lowerLoc);
 		if (portal == null) return;
 
-		cancelTask(portal.getAnimTaskId());
-		portal.setAnimTaskId(-1);
-		cancelTask(portal.getCheckTaskId());
-		portal.setCheckTaskId(-1);
-		cancelTask(portal.getUpdaterTaskId());
-		portal.setUpdaterTaskId(-1);
-		if (portal.getInteraction() != null) {
-			portal.getInteraction().remove();
-			portal.setInteraction(null);
-		}
+		cancelTask(portal.getAnimTaskId());    portal.setAnimTaskId(-1);
+		cancelTask(portal.getCheckTaskId());   portal.setCheckTaskId(-1);
+		cancelTask(portal.getUpdaterTaskId()); portal.setUpdaterTaskId(-1);
+		if (portal.getInteraction() != null) { portal.getInteraction().remove(); portal.setInteraction(null); }
 
-		final BlockDisplay lower = portal.getLowerDisplay();
-		final BlockDisplay upper = portal.getUpperDisplay();
-		final TextDisplay hologram = portal.getHologram();
-
-		final Transformation lowerStart = lower != null ? lower.getTransformation() : null;
-		final Transformation upperStart = upper != null ? upper.getTransformation() : null;
-		final Transformation hgStart = hologram != null ? hologram.getTransformation() : null;
+		final BlockDisplay lower   = portal.getLowerDisplay();
+		final BlockDisplay upper   = portal.getUpperDisplay();
+		final TextDisplay  hologram = portal.getHologram();
+		final Transformation lowerStart = lower   != null ? lower.getTransformation()   : null;
+		final Transformation upperStart = upper   != null ? upper.getTransformation()   : null;
+		final Transformation hgStart   = hologram != null ? hologram.getTransformation() : null;
 
 		final int duration = plugin.getConfigManager().getShrinkTicks();
 		final int[] tick = {0};
@@ -205,8 +196,8 @@ public class PortalManager {
 			tick[0]++;
 			float scale = Math.max(0.001f, 1f - Math.min(1f, (float) tick[0] / duration));
 
-			if (lower != null && lower.isValid()) applyShrink(lower, lowerStart, scale, true);
-			if (upper != null && upper.isValid()) applyShrink(upper, upperStart, scale, true);
+			if (lower   != null && lower.isValid())   applyShrink(lower,   lowerStart, scale, true);
+			if (upper   != null && upper.isValid())   applyShrink(upper,   upperStart, scale, true);
 			if (hologram != null && hologram.isValid()) applyShrink(hologram, hgStart, scale, false);
 
 			if (tick[0] >= duration) {
@@ -220,14 +211,14 @@ public class PortalManager {
 	}
 
 	private void applyShrink(Display display, Transformation base, float scale, boolean centerBlock) {
-		Vector3f translation = new Vector3f(base.getTranslation());
+		Vector3f t = new Vector3f(base.getTranslation());
 		if (centerBlock) {
-			float offset = (1f - scale) * 0.5f;
-			translation.add(offset, offset, offset);
+			float off = (1f - scale) * 0.5f;
+			t.add(off, off, off);
 		}
 		display.setInterpolationDelay(0);
 		display.setInterpolationDuration(1);
-		display.setTransformation(new Transformation(translation, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation()));
+		display.setTransformation(new Transformation(t, base.getLeftRotation(), new Vector3f(scale), base.getRightRotation()));
 	}
 
 	public void removePortal(Location lowerLoc) {
@@ -235,14 +226,15 @@ public class PortalManager {
 		if (portal == null) return;
 		if (portal.getLowerDisplay() != null) portal.getLowerDisplay().remove();
 		if (portal.getUpperDisplay() != null) portal.getUpperDisplay().remove();
-		if (portal.getInteraction() != null) portal.getInteraction().remove();
-		if (portal.getHologram() != null) portal.getHologram().remove();
+		if (portal.getInteraction()  != null) portal.getInteraction().remove();
+		if (portal.getHologram()     != null) portal.getHologram().remove();
 		portalsByEntityId.values().removeIf(p -> p == portal);
 		playerPortalCount.computeIfPresent(portal.getOwner(), (uuid, count) -> count <= 1 ? null : count - 1);
 		cancelTask(portal.getTaskId());
 		cancelTask(portal.getAnimTaskId());
 		cancelTask(portal.getCheckTaskId());
 		cancelTask(portal.getUpdaterTaskId());
+		cancelTask(portal.getAutoCloseTaskId());
 	}
 
 	public void removeAllPortals() {
@@ -275,9 +267,9 @@ public class PortalManager {
 		double side = switch (facing) {
 			case NORTH -> 0.5 - lx;
 			case SOUTH -> lx - 0.5;
-			case EAST -> 0.5 - lz;
-			case WEST -> lz - 0.5;
-			default -> 0.0;
+			case EAST  -> 0.5 - lz;
+			case WEST  -> lz - 0.5;
+			default    -> 0.0;
 		};
 		return side > 0 ? Door.Hinge.RIGHT : Door.Hinge.LEFT;
 	}

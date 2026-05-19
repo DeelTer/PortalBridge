@@ -13,8 +13,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.util.Transformation;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import ru.deelter.portalbridge.PortalBridgePlugin;
 import ru.deelter.portalbridge.flags.ServerFlag;
 import ru.deelter.portalbridge.pinger.ServerInfo;
@@ -44,12 +46,18 @@ import java.util.UUID;
  * @see ServerInfo for server validation
  */
 @RequiredArgsConstructor
+@NullMarked
 public class PortalListener implements Listener {
 
 	private final PortalBridgePlugin plugin;
 
 	@EventHandler
-	public void onEntityInteract(@NonNull PlayerInteractEntityEvent event) {
+	public void onPlayerJoin(PlayerJoinEvent event) {
+		plugin.getCooldownManager().applyTransferImmunity(event.getPlayer().getUniqueId());
+	}
+
+	@EventHandler
+	public void onEntityInteract(PlayerInteractEntityEvent event) {
 		if (!(event.getRightClicked() instanceof Interaction interaction)) return;
 
 		Portal portal = plugin.getPortalManager().getPortalByEntity(interaction);
@@ -78,6 +86,7 @@ public class PortalListener implements Listener {
 
 						if (!hasDataFromApi && !isAccepting) {
 							player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
+							plugin.getConfigManager().getUnavailableSound().play(portal.getLowerDoorLoc());
 							return;
 						}
 
@@ -93,6 +102,7 @@ public class PortalListener implements Listener {
 
 			if (!hasDataFromApi && !isAccepting) {
 				player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
+				plugin.getConfigManager().getUnavailableSound().play(portal.getLowerDoorLoc());
 				return;
 			}
 
@@ -104,7 +114,7 @@ public class PortalListener implements Listener {
 		}
 	}
 
-	private boolean isServerAccepting(@NonNull ServerInfo serverInfo) {
+	private boolean isServerAccepting(ServerInfo serverInfo) {
 		return serverInfo.hasFlag(ServerFlag.PROXY) || serverInfo.hasFlag(ServerFlag.TRANSFERS);
 	}
 
@@ -149,6 +159,12 @@ public class PortalListener implements Listener {
 	}
 
 	private boolean canTransfer(Player player, Portal portal) {
+		if (plugin.getCooldownManager().hasTransferImmunity(player.getUniqueId())) {
+			player.sendMessage(plugin.getLang().getMessage("transfer-immunity", player));
+			plugin.getConfigManager().getUnavailableSound().play(player.getLocation());
+			return false;
+		}
+
 		ServerInfo serverInfo = portal.getCachedInfo();
 		if (serverInfo == null) {
 			if (plugin.getConfigManager().isDebug()) {
@@ -197,7 +213,7 @@ public class PortalListener implements Listener {
 		return false;
 	}
 
-	private void notifyNearbyPlayers(Player enteringPlayer, @NonNull Portal portal) {
+	private void notifyNearbyPlayers(Player enteringPlayer, Portal portal) {
 		String targetHost = portal.getTargetHost();
 		int targetPort = portal.getTargetPort();
 		String targetAddress = targetPort == 25565 ? targetHost : targetHost + ":" + targetPort;
@@ -234,7 +250,7 @@ public class PortalListener implements Listener {
 		}
 	}
 
-	void applyDoorAnimation(Portal portal, boolean toOpen) {
+	private void applyDoorAnimation(Portal portal, boolean toOpen) {
 		BlockDisplay lowerDoorDisplay = portal.getLowerDisplay();
 		BlockDisplay upperDoorDisplay = portal.getUpperDisplay();
 		if (lowerDoorDisplay == null || upperDoorDisplay == null) return;

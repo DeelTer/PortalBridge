@@ -30,3 +30,6 @@ messages:
   server-no-portalbridge: "<red>This server does not have PortalBridge plugin. Transfers may be unsafe."
   portal-creation-failed: "<red>Failed to create portal. Please try again."
   please-wait: "<yellow>Please wait a moment before creating another portal to the same server."
+  placement-on-cooldown: "<red>You must wait before placing another portal."
+  transfer-immunity: "<yellow>You are immune to portals for a few seconds after joining."
+  spawn-protection: "<red>Cannot place a portal near the world spawn."

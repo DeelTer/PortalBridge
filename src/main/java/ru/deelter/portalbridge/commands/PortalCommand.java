@@ -184,6 +184,18 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 			return;
 		}
 
+		if (plugin.getCooldownManager().isOnPlacementCooldown(player.getUniqueId())) {
+			player.sendMessage(plugin.getLang().getMessage("placement-on-cooldown", player));
+			plugin.getConfigManager().getUnavailableSound().play(player.getLocation());
+			return;
+		}
+
+		if (plugin.getCooldownManager().isNearSpawn(player.getLocation())) {
+			player.sendMessage(plugin.getLang().getMessage("spawn-protection", player));
+			plugin.getConfigManager().getUnavailableSound().play(player.getLocation());
+			return;
+		}
+
 		String cooldownKey = player.getUniqueId() + ":" + hp.host() + ":" + hp.port();
 		if (commandCooldown.getIfPresent(cooldownKey) != null) {
 			player.sendMessage(plugin.getLang().getMessage("please-wait", player));
@@ -196,6 +208,7 @@ public class PortalCommand implements CommandExecutor, TabCompleter {
 		processingSet.remove(player.getUniqueId());
 		if (portal == null) return;
 
+		plugin.getCooldownManager().applyPlacementCooldown(player.getUniqueId());
 		commandCooldown.put(cooldownKey, true);
 		player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", hp.address()));
 		plugin.getPortalManager().startPingAndUpdateHologram(portal, lifetimeSec);

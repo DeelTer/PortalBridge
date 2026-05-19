@@ -1,6 +1,7 @@
 package ru.deelter.portalbridge.bind;
 
 import lombok.RequiredArgsConstructor;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -39,10 +40,25 @@ public class BindListener implements Listener {
 			return;
 		}
 
+		if (plugin.getCooldownManager().isOnPlacementCooldown(player.getUniqueId())) {
+			player.sendMessage(plugin.getLang().getMessage("placement-on-cooldown", player));
+			plugin.getConfigManager().getUnavailableSound().play(player.getLocation());
+			return;
+		}
+
+		Location placementLocation = player.getLocation();
+		if (plugin.getCooldownManager().isNearSpawn(placementLocation)) {
+			player.sendMessage(plugin.getLang().getMessage("spawn-protection", player));
+			plugin.getConfigManager().getUnavailableSound().play(placementLocation);
+			return;
+		}
+
 		int lifetimeSec = plugin.getConfigManager().getPortalLifetimeSeconds();
 		Portal portal = plugin.getPortalManager().createPortal(
 				player, bindData.host(), bindData.port(), lifetimeSec, bindData.material(), null);
 		if (portal == null) return;
+
+		plugin.getCooldownManager().applyPlacementCooldown(player.getUniqueId());
 
 		String address = bindData.port() == 25565 ? bindData.host() : bindData.host() + ":" + bindData.port();
 		player.sendMessage(plugin.getLang().getMessage("portal-created", player, "target", address));

@@ -30,3 +30,6 @@ messages:
   server-no-portalbridge: "<red>На этом сервере нет плагина PortalBridge. Переход может быть небезопасен."
   portal-creation-failed: "<red>Не удалось создать портал. Попробуйте снова."
   please-wait: "<yellow>Подождите немного перед созданием портала на тот же сервер."
+  placement-on-cooldown: "<red>Подождите перед установкой следующего портала."
+  transfer-immunity: "<yellow>После входа вы временно защищены от порталов."
+  spawn-protection: "<red>Нельзя ставить портал вблизи спавна."

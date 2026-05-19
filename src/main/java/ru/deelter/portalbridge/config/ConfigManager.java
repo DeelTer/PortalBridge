@@ -52,6 +52,11 @@ public class ConfigManager {
 	private SoundConfig openSound;
 	private SoundConfig closeSound;
 	private SoundConfig placeSound;
+	private SoundConfig unavailableSound;
+
+	private boolean fallbackEnabled;
+	private String fallbackHost;
+	private int fallbackPort;
 
 	private ParticleConfig placeParticles;
 
@@ -64,6 +69,13 @@ public class ConfigManager {
 	private int commandCooldownSeconds;
 	private double notifyRadius;
 	private int autoCloseTicks;
+
+	private boolean placementCooldownEnabled;
+	private int placementCooldownSeconds;
+	private boolean transferImmunityEnabled;
+	private int transferImmunitySeconds;
+	private boolean spawnProtectionEnabled;
+	private double spawnProtectionRadius;
 
 	public ConfigManager(JavaPlugin plugin) {
 		this.plugin = plugin;
@@ -121,8 +133,20 @@ public class ConfigManager {
 		openSound = parseSound("portal.sounds.open", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 1.0f, 1.0f);
 		closeSound = parseSound("portal.sounds.close", Sound.BLOCK_WOODEN_DOOR_CLOSE, "BLOCK_WOODEN_DOOR_CLOSE", 1.0f, 1.0f);
 		placeSound = parseSound("portal.sounds.place", Sound.BLOCK_WOODEN_DOOR_OPEN, "BLOCK_WOODEN_DOOR_OPEN", 0.7f, 1.3f);
+		unavailableSound = parseSound("portal.sounds.unavailable", Sound.BLOCK_BAMBOO_WOOD_DOOR_CLOSE, "BLOCK_BAMBOO_WOOD_DOOR_CLOSE", 1.0f, 1.0f);
+
+		fallbackEnabled = config.getBoolean("fallback.enabled", false);
+		fallbackHost = config.getString("fallback.host", hubHost);
+		fallbackPort = config.getInt("fallback.port", hubPort);
 
 		placeParticles = parseParticles("portal.particles");
+
+		placementCooldownEnabled = config.getBoolean("protection.placement-cooldown.enabled", true);
+		placementCooldownSeconds = config.getInt("protection.placement-cooldown.seconds", 30);
+		transferImmunityEnabled = config.getBoolean("protection.transfer-immunity.enabled", true);
+		transferImmunitySeconds = config.getInt("protection.transfer-immunity.seconds", 10);
+		spawnProtectionEnabled = config.getBoolean("protection.spawn-protection.enabled", true);
+		spawnProtectionRadius = config.getDouble("protection.spawn-protection.radius", 16.0);
 	}
 
 	private Material parseMaterial(@NonNull String name, Material fallback) {
@@ -141,7 +165,7 @@ public class ConfigManager {
 		float pitch = (float) config.getDouble(path + ".pitch", fallbackPitch);
 		Sound sound;
 		try {
-			sound = Sound.valueOf(id.toUpperCase());
+			sound = Sound.valueOf(id.toUpperCase().replace('.', '_').replace('-', '_'));
 		} catch (IllegalArgumentException e) {
 			plugin.getLogger().warning("Invalid sound '" + id + "' at " + path + ", using " + fallbackId);
 			sound = fallbackSound;

@@ -19,6 +19,7 @@ dependencies {
     paperweight.paperDevBundle("1.21.3-R0.1-SNAPSHOT")
     compileOnly("org.projectlombok:lombok:1.18.38")
     annotationProcessor("org.projectlombok:lombok:1.18.38")
+    compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
 
     compileOnly("org.slf4j:slf4j-simple:2.0.16")
     compileOnly("net.kyori:adventure-api:4.17.0")

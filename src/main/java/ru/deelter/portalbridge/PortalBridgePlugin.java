@@ -17,6 +17,7 @@ import ru.deelter.portalbridge.pinger.ServerPinger;
 import ru.deelter.portalbridge.portal.PortalListener;
 import ru.deelter.portalbridge.portal.PortalManager;
 import ru.deelter.portalbridge.utils.ConsentCache;
+import ru.deelter.portalbridge.utils.CooldownManager;
 import ru.deelter.portalbridge.utils.TrustListManager;
 
 @Getter
@@ -29,6 +30,7 @@ public class PortalBridgePlugin extends JavaPlugin {
 	}
 
 	private ConsentCache consentCache;
+	private CooldownManager cooldownManager;
 	private ConfigManager configManager;
 	private Lang lang;
 	private PortalManager portalManager;
@@ -49,6 +51,7 @@ public class PortalBridgePlugin extends JavaPlugin {
 		portalManager = new PortalManager(this);
 		doorBindManager = new DoorBindManager(this);
 		consentCache = new ConsentCache(configManager);
+		cooldownManager = new CooldownManager(configManager);
 
 		if (!Bukkit.isAcceptingTransfers()) {
 			if (configManager.isRequireAcceptTransfers()) {
@@ -121,6 +124,11 @@ public class PortalBridgePlugin extends JavaPlugin {
 					getLogger().warning("Failed to disable flag injection: " + throwable.getMessage());
 				}
 			}
+		}
+		if (Bukkit.isStopping() && configManager.isFallbackEnabled()) {
+			String host = configManager.getFallbackHost();
+			int port = configManager.getFallbackPort();
+			Bukkit.getOnlinePlayers().forEach(player -> player.transfer(host, port));
 		}
 		getLogger().info("PortalBridge disabled");
 	}

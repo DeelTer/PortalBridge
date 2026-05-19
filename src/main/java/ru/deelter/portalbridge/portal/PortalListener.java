@@ -85,8 +85,10 @@ public class PortalListener implements Listener {
 						boolean isAccepting = isServerAccepting(receivedInfo);
 
 						if (!hasDataFromApi && !isAccepting) {
-							player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
-							plugin.getConfigManager().getUnavailableSound().play(portal.getLowerDoorLoc());
+							Bukkit.getScheduler().runTask(plugin, () -> {
+								player.sendMessage(plugin.getLang().getMessage("server-not-accepting-transfers", player));
+								plugin.getConfigManager().getUnavailableSound().play(portal.getLowerDoorLoc());
+							});
 							return;
 						}
 

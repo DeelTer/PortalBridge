@@ -90,7 +90,7 @@ public class PortalListener implements Listener {
 							return;
 						}
 
-						if (hasDataFromApi && !receivedInfo.hasPortalBridge()) {
+						if (!portal.isOpen() && hasDataFromApi && !receivedInfo.hasPortalBridge()) {
 							player.sendMessage(plugin.getLang().getMessage("server-no-portalbridge", player));
 						}
 
@@ -106,7 +106,7 @@ public class PortalListener implements Listener {
 				return;
 			}
 
-			if (hasDataFromApi && !cachedInfo.hasPortalBridge()) {
+			if (!portal.isOpen() && hasDataFromApi && !cachedInfo.hasPortalBridge()) {
 				player.sendMessage(plugin.getLang().getMessage("server-no-portalbridge", player));
 			}
 
